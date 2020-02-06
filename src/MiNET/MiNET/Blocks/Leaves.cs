@@ -71,7 +71,7 @@ namespace MiNET.Blocks
 			BreakBlock(level, BlockFace.None, drops.Length == 0);
 			foreach (var drop in drops)
 			{
-				level.DropItem(Coordinates, drop);
+				level.DropItem(Coordinates.BlockCenter(), drop);
 			}
 		}
 

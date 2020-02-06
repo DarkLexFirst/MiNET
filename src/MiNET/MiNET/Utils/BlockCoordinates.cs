@@ -295,6 +295,11 @@ namespace MiNET.Utils
 			return this + South + West;
 		}
 
+		public Vector3 BlockCenter()
+		{
+			return (Vector3) this + new Vector3(0.5f);
+		}
+
 		public bool Equals(BlockCoordinates other)
 		{
 			return X == other.X && Y == other.Y && Z == other.Z;

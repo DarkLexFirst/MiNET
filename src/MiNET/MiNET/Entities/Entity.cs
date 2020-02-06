@@ -46,7 +46,7 @@ namespace MiNET.Entities
 
 		public Level Level { get; set; }
 
-		public string EntityTypeId { get; protected set; }
+		public string EntityTypeId { get; set; }
 		public long EntityId { get; set; }
 		public bool IsSpawned { get; set; }
 		public bool CanDespawn { get; set; } = true;
@@ -137,6 +137,7 @@ namespace MiNET.Entities
 			RiderRotationLocked = 57,
 			RiderMaxRotation = 58,
 			RiderMinRotation = 59,
+			AlwaysShowNameTag = 80,
 
 			EntityFlags2 = 91, // same treatment as 0 flags, perhaps
 
@@ -160,6 +161,7 @@ namespace MiNET.Entities
 			metadata[(int) MetadataFlags.RiderRotationLocked] = new MetadataByte(RiderRotationLocked);
 			metadata[(int) MetadataFlags.RiderMaxRotation] = new MetadataFloat(RiderMaxRotation);
 			metadata[(int) MetadataFlags.RiderMinRotation] = new MetadataFloat(RiderMinRotation);
+			metadata[(int) MetadataFlags.AlwaysShowNameTag] = new MetadataByte(IsAlwaysShowName);
 			return metadata;
 		}
 

@@ -873,7 +873,7 @@ namespace MiNET.Worlds
 			RelayBroadcast(null, sendList ?? GetAllPlayers(), message);
 		}
 
-		public void RelayBroadcast<T>(Player source, Player[] sendList, T message) where T : Packet<T>, new()
+		public virtual void RelayBroadcast<T>(Player source, Player[] sendList, T message) where T : Packet<T>, new()
 		{
 			if (message == null) return;
 
@@ -1428,35 +1428,35 @@ namespace MiNET.Worlds
 			{
 				foreach (Item drop in drops)
 				{
-					DropItem(block.Coordinates, drop);
+					DropItem(block.Coordinates.BlockCenter(), drop);
 				}
 			}
 		}
 
 
-		public virtual void DropItem(Vector3 coordinates, Item drop)
+		public virtual ItemEntity DropItem(Vector3 coordinates, Item drop, bool random = true)
 		{
-			if (GameMode == GameMode.Creative) return;
+			if (GameMode == GameMode.Creative) return null;
 
-			if (drop == null) return;
-			if (drop.Id == 0) return;
-			if (drop.Count == 0) return;
+			if (drop == null) return null;
+			if (drop.Id == 0) return null;
+			if (drop.Count == 0) return null;
 
 			if (AutoSmelt) drop = drop.GetSmelt() ?? drop;
 
-			Random random = new Random();
 			var itemEntity = new ItemEntity(this, drop)
 			{
-				KnownPosition =
-				{
-					X = (float) coordinates.X + 0.5f,
-					Y = (float) coordinates.Y + 0.5f,
-					Z = (float) coordinates.Z + 0.5f
-				},
-				Velocity = new Vector3((float) (random.NextDouble() * 0.005), (float) (random.NextDouble() * 0.20), (float) (random.NextDouble() * 0.005))
+				KnownPosition = new PlayerLocation(coordinates)
 			};
 
+			if (random)
+			{
+				Random rnd = new Random();
+				itemEntity.Velocity = new Vector3((float) (rnd.NextDouble() * 0.1 * Math.Pow(-1, rnd.Next(0, 2))), (float) (rnd.NextDouble() * 0.2), (float) (rnd.NextDouble() * 0.1 * Math.Pow(-1, rnd.Next(0, 2))));
+			}
+
 			itemEntity.SpawnEntity();
+			return itemEntity;
 		}
 
 		public void ApplyPhysics(int x, int y, int z)

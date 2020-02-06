@@ -33,6 +33,16 @@ namespace MiNET.Utils
 	public abstract class Transaction
 	{
 		public List<TransactionRecord> TransactionRecords { get; set; } = new List<TransactionRecord>();
+
+		public override string ToString()
+		{
+			var str = $"TransactionType: {GetType()}\n";
+			str += "{\n";
+			foreach (var tr in TransactionRecords)
+				str += $"	{tr.ToString()}\n\n";
+			str += "}";
+			return str;
+		}
 	}
 
 	public class NormalTransaction : Transaction
@@ -51,6 +61,16 @@ namespace MiNET.Utils
 		public Vector3 FromPosition { get; set; }
 		public Vector3 ClickPosition { get; set; }
 		public uint BlockRuntimeId { get; set; }
+
+		public override string ToString()
+		{
+			var str = base.ToString() + "\n";
+			str += $"ActionType = {ActionType}, Position = {Position}, Face = {Face}, Slot = {Slot}\n";
+			str += $"Item = {Item}\n";
+			str += $"FromPosition = {FromPosition}, ClickPosition = {ClickPosition}\n";
+			str += $"BlockRuntimeId = {BlockRuntimeId}\n";
+			return str;
+		}
 	}
 	public class ItemUseOnEntityTransaction : Transaction
 	{
@@ -60,6 +80,15 @@ namespace MiNET.Utils
 		public Item Item { get; set; }
 		public Vector3 FromPosition { get; set; }
 		public Vector3 ClickPosition { get; set; }
+
+		public override string ToString()
+		{
+			var str = base.ToString() + "\n";
+			str += $"ActionType = {ActionType}, EntityId = {EntityId}, Slot = {Slot}\n";
+			str += $"FromPosition = {FromPosition}, ClickPosition = {ClickPosition}\n";
+			str += $"Item = {Item}\n";
+			return str;
+		}
 	}
 	public class ItemReleaseTransaction : Transaction
 	{
@@ -67,6 +96,14 @@ namespace MiNET.Utils
 		public int Slot { get; set; }
 		public Item Item { get; set; }
 		public Vector3 FromPosition { get; set; }
+
+		public override string ToString()
+		{
+			var str = base.ToString() + "\n";
+			str += $"ActionType = {ActionType}, Slot = {Slot}, FromPosition = {FromPosition}\n";
+			str += $"Item = {Item}\n";
+			return str;
+		}
 	}
 
 	public abstract class TransactionRecord
@@ -74,11 +111,25 @@ namespace MiNET.Utils
 		public int Slot { get; set; }
 		public Item OldItem { get; set; }
 		public Item NewItem { get; set; }
+
+		public override string ToString()
+		{
+			return $"RecordType: \"{GetType()}\" <->\n" +
+				$"	Slot = {Slot}\n" +
+				$"	OldItem = {OldItem}\n" +
+				$"	NewItem = {NewItem}\n";
+		}
 	}
 
 	public class ContainerTransactionRecord : TransactionRecord
 	{
 		public int InventoryId { get; set; }
+
+		public override string ToString()
+		{
+			return base.ToString() + "\n" +
+				$"	InventoryId = {InventoryId}\n";
+		}
 	}
 
 	public class GlobalTransactionRecord : TransactionRecord
@@ -88,15 +139,33 @@ namespace MiNET.Utils
 	public class WorldInteractionTransactionRecord : TransactionRecord
 	{
 		public int Flags { get; set; } // NoFlag = 0 WorldInteractionRandom = 1
-	}
+
+		public override string ToString()
+		{
+			return base.ToString() + "\n" +
+				$"	Flags = {Flags}\n";
+		}
+}
 
 	public class CreativeTransactionRecord : TransactionRecord
 	{
 		public int InventoryId { get; set; } = 0x79; // Creative
+
+		public override string ToString()
+		{
+			return base.ToString() + "\n" +
+				$"	InventoryId = {InventoryId}\n";
+		}
 	}
 
 	public class CraftTransactionRecord : TransactionRecord
 	{
 		public McpeInventoryTransaction.CraftingAction Action { get; set; }
+
+		public override string ToString()
+		{
+			return base.ToString() + "\n" +
+				$"	Action = {Action}\n";
+		}
 	}
 }

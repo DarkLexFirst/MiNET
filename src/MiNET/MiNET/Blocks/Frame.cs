@@ -97,7 +97,7 @@ namespace MiNET.Blocks
 				world.SetBlockEntity(blockEntity);
 				if (item != null)
 				{
-					world.DropItem(Coordinates, item);
+					world.DropItem(Coordinates.BlockCenter(), item);
 				}
 			}
 		}

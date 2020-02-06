@@ -1714,6 +1714,9 @@ namespace MiNET
 			mobEquipment.item = Inventory.GetItemInHand();
 			mobEquipment.slot = (byte) Inventory.InHandSlot;
 			SendPacket(mobEquipment);
+
+			SendSetSlot(Inventory.LeftHand, 0, 0x77);
+			SendSetSlot(Inventory.CursorInventory.Cursor, 0, 0x7c);
 		}
 
 		public virtual void SendCraftingRecipes()
@@ -2234,6 +2237,15 @@ namespace MiNET
 			Log.Warn($"Transaction mismatch");
 		}
 
+		public void SendSetSlot(Item item, int slot, int inventoryId)
+		{
+			McpeInventorySlot packet = McpeInventorySlot.CreateObject();
+			packet.inventoryId = (uint) inventoryId;
+			packet.item = item;
+			packet.slot = (uint) slot;
+			SendPacket(packet);
+		}
+
 		private long _itemUseTimer;
 
 		protected virtual void HandleItemReleaseTransaction(ItemReleaseTransaction transaction)
@@ -2378,6 +2390,9 @@ namespace MiNET
 
 								break;
 							}
+							case 119:
+								Inventory.LeftHand = newItem;
+							break;
 							case 120: // Armor inventory
 							{
 								//TODO Handle custom items, like player inventory and cursor
