@@ -1715,8 +1715,13 @@ namespace MiNET
 			mobEquipment.slot = (byte) Inventory.InHandSlot;
 			SendPacket(mobEquipment);
 
-			SendSetSlot(Inventory.LeftHand, 0, 0x77);
-			SendSetSlot(Inventory.CursorInventory.Cursor, 0, 0x7c);
+			McpeInventoryContent packet = McpeInventoryContent.CreateObject();
+			packet.inventoryId = 0x7c;
+			packet.input = new ItemStacks();
+			packet.input.AddRange(Inventory.CursorInventory.Slots);
+			SendPacket(packet);
+
+			SendSetSlot(Inventory.LeftHand, 0x77);
 		}
 
 		public virtual void SendCraftingRecipes()
@@ -2031,6 +2036,8 @@ namespace MiNET
 			_openInventory = inventory;
 		}
 
+		public virtual IInventory GetOpenInventory() => _openInventory;
+
 		public void OpenInventory(BlockCoordinates inventoryCoord)
 		{
 			lock (_inventorySync)
@@ -2235,6 +2242,14 @@ namespace MiNET
 		protected virtual void HandleInventoryMismatchTransaction(InventoryMismatchTransaction transaction)
 		{
 			Log.Warn($"Transaction mismatch");
+		}
+
+		public void SendSetSlot(Item item, int inventoryId)
+		{
+			McpeInventoryContent packet = McpeInventoryContent.CreateObject();
+			packet.inventoryId = (uint) inventoryId;
+			packet.input = new ItemStacks() { item };
+			SendPacket(packet);
 		}
 
 		public void SendSetSlot(Item item, int slot, int inventoryId)
@@ -3284,6 +3299,7 @@ namespace MiNET
 		public override MetadataDictionary GetMetadata()
 		{
 			var metadata = base.GetMetadata();
+			if (!Effects.Values.Any(e => e.Particles)) metadata._entries.Remove((int) MetadataFlags.PotionColor);
 			metadata[(int) MetadataFlags.NameTag] = new MetadataString(NameTag ?? Username);
 			metadata[(int) MetadataFlags.ButtonText] = new MetadataString(ButtonText ?? string.Empty);
 			metadata[(int) MetadataFlags.PlayerFlags] = new MetadataByte((byte) (IsSleeping ? 0b10 : 0));
