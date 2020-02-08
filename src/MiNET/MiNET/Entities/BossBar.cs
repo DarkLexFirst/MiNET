@@ -38,12 +38,14 @@ namespace MiNET.Entities
 			{
 			}
 
-			public override void TakeHit(Entity source, Item tool, float damage = 1, DamageCause cause = DamageCause.Unknown)
+			public override bool TakeHit(Entity source, Item tool, float damage = 1, DamageCause cause = DamageCause.Unknown)
 			{
+				return false;
 			}
 
-			public override void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
+			public override bool TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 			{
+				return false;
 			}
 
 			public override void OnTick()

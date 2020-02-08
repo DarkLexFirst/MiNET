@@ -34,8 +34,9 @@ namespace TestPlugin
 		{
 		}
 
-		public override void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
+		public override bool TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
+			return false;
 			//base.TakeHit(source, 0, cause);
 		}
 	}

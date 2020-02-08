@@ -36,15 +36,15 @@ namespace TestPlugin.Pets
 		{
 		}
 
-		public override void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
+		public override bool TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
-			if (!(source is Player)) return;
+			if (!(source is Player)) return false;
 
 			// Pets must die in void or they get stuck forever :-(
 			if (cause == DamageCause.Void)
 			{
-				base.TakeHit(source, damage, cause);
-				return; // Love denied!
+				return base.TakeHit(source, damage, cause);
+				// Love denied!
 			}
 
 			int size = Entity.Level.Random.Next(0, 3); // The size of the hearts
@@ -52,14 +52,14 @@ namespace TestPlugin.Pets
 			Pet pet = Entity as Pet;
 			if (pet != null)
 			{
-				if (pet.AttackTarget != null) return;
+				if (pet.AttackTarget != null) return false;
 
 				// He is still angry, better not pet him right now.
 				if (!pet.IsInRage && IsOnFire && pet.Level.Random.Next(10) == 0)
 				{
 					pet.AttackTarget = (Player) source;
 					pet.RageTick = 20 * 3;
-					return;
+					return false;
 				}
 
 				// Only owner do petting with my pet!
@@ -70,7 +70,7 @@ namespace TestPlugin.Pets
 					{
 						pet.AttackTarget = (Player) source;
 						pet.RageTick = 20 * 2;
-						return;
+						return false;
 					}
 
 					LegacyParticle particle = new HeartParticle(pet.Level, size);
@@ -85,7 +85,7 @@ namespace TestPlugin.Pets
 						pet.Owner = (Player) source;
 						pet.AttackTarget = null;
 						pet.RageTick = 0;
-						return;
+						return false;
 					}
 
 					// Don't trust animals!
@@ -93,10 +93,11 @@ namespace TestPlugin.Pets
 					{
 						pet.AttackTarget = (Player) source;
 						pet.RageTick = 20 * 3;
-						return;
+						return false;
 					}
 				}
 			}
+			return true;
 		}
 
 		public override void OnTick()

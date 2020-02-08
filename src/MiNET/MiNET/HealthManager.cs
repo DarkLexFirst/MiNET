@@ -121,18 +121,18 @@ namespace MiNET
 			}
 		}
 
-		public virtual void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
+		public virtual bool TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
-			TakeHit(source, null, damage, cause);
+			return TakeHit(source, null, damage, cause);
 		}
 
-		public virtual void TakeHit(Entity source, Item tool, float damage = 1, DamageCause cause = DamageCause.Unknown)
+		public virtual bool TakeHit(Entity source, Item tool, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
 			var player = Entity as Player;
-			if (player != null && player.GameMode != GameMode.Survival) return;
+			if (player != null && player.GameMode != GameMode.Survival) return false;
 
 
-			if (CooldownTick > 0 && cause == DamageCause.EntityAttack) return;
+			if (CooldownTick > 0 && cause == DamageCause.EntityAttack) return false;
 
 			LastDamageSource = source;
 			LastDamageCause = cause;
@@ -154,8 +154,8 @@ namespace MiNET
 
 			if (cause == DamageCause.Starving)
 			{
-				if (Entity.Level.Difficulty <= Difficulty.Easy && Hearts <= 10) return;
-				if (Entity.Level.Difficulty <= Difficulty.Normal && Hearts <= 1) return;
+				if (Entity.Level.Difficulty <= Difficulty.Easy && Hearts <= 10) return false;
+				if (Entity.Level.Difficulty <= Difficulty.Normal && Hearts <= 1) return false;
 			}
 
 			Health -= (int) (damage * 10);
@@ -164,7 +164,7 @@ namespace MiNET
 				OnPlayerTakeHit(new HealthEventArgs(this, source, Entity));
 				Health = 0;
 				Kill();
-				return;
+				return true;
 			}
 
 			if (player != null)
@@ -185,6 +185,7 @@ namespace MiNET
 				CooldownTick = 10;
 
 			OnPlayerTakeHit(new HealthEventArgs(this, source, Entity));
+			return true;
 		}
 
 		protected virtual void DoKnockback(Entity source, Item tool)
