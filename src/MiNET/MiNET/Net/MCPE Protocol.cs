@@ -2485,7 +2485,7 @@ namespace MiNET.Net
 		public bool isServerSideMovementEnabled; // = null;
 		public long currentTick; // = null;
 		public int enchantmentSeed; // = null;
-		public BlockPalette BlockPalette; // = null;
+		public BlockPalette blockPalette; // = null;
 		public Itemstates itemstates; // = null;
 		public string multiplayerCorrelationId; // = null;
 
@@ -2547,7 +2547,7 @@ namespace MiNET.Net
 			Write(isServerSideMovementEnabled);
 			Write(currentTick);
 			WriteSignedVarInt(enchantmentSeed);
-			Write(BlockPalette);
+			Write(blockPalette);
 			Write(itemstates);
 			Write(multiplayerCorrelationId);
 
@@ -2609,7 +2609,7 @@ namespace MiNET.Net
 			isServerSideMovementEnabled = ReadBool();
 			currentTick = ReadLong();
 			enchantmentSeed = ReadSignedVarInt();
-			BlockPalette = ReadBlockPallet();
+			blockPalette = ReadBlockPalette();
 			itemstates = ReadItemstates();
 			multiplayerCorrelationId = ReadString();
 
@@ -2669,7 +2669,7 @@ namespace MiNET.Net
 			isServerSideMovementEnabled=default(bool);
 			currentTick=default(long);
 			enchantmentSeed=default(int);
-			BlockPalette=default(BlockPalette);
+			blockPalette=default(BlockPalette);
 			itemstates=default(Itemstates);
 			multiplayerCorrelationId=default(string);
 		}
@@ -9139,6 +9139,7 @@ namespace MiNET.Net
 	public partial class McpeClientCacheStatus : Packet<McpeClientCacheStatus>
 	{
 
+		public bool enabled; // = null;
 
 		public McpeClientCacheStatus()
 		{
@@ -9152,6 +9153,7 @@ namespace MiNET.Net
 
 			BeforeEncode();
 
+			Write(enabled);
 
 			AfterEncode();
 		}
@@ -9165,6 +9167,7 @@ namespace MiNET.Net
 
 			BeforeDecode();
 
+			enabled = ReadBool();
 
 			AfterDecode();
 		}
@@ -9176,6 +9179,7 @@ namespace MiNET.Net
 		{
 			base.ResetPacket();
 
+			enabled=default(bool);
 		}
 
 	}
