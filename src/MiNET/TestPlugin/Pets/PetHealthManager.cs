@@ -1,4 +1,4 @@
-#region LICENSE
+﻿#region LICENSE
 
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
@@ -36,7 +36,7 @@ namespace TestPlugin.Pets
 		{
 		}
 
-		public override void TakeHit(Entity source, int damage = 1, DamageCause cause = DamageCause.Unknown)
+		public override void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
 			if (!(source is Player)) return;
 

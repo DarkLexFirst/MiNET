@@ -1008,6 +1008,60 @@ namespace MiNET.Worlds
 			}
 		}
 
+		public void GetChunks(ChunkCoordinates chunkPosition, Dictionary<ChunkCoordinates, McpeWrapper> chunksUsed, List<ChunkCoordinates> chunks, double radius)
+		{
+			lock (chunksUsed)
+			{
+				Dictionary<ChunkCoordinates, double> newOrders = new Dictionary<ChunkCoordinates, double>();
+
+				double radiusSquared = Math.Pow(radius, 2);
+
+				int centerX = chunkPosition.X;
+				int centerZ = chunkPosition.Z;
+
+				for (double x = -radius; x <= radius; ++x)
+				{
+					for (double z = -radius; z <= radius; ++z)
+					{
+						var distance = (x * x) + (z * z);
+						if (distance > radiusSquared)
+						{
+							continue;
+						}
+						int chunkX = (int) (x + centerX);
+						int chunkZ = (int) (z + centerZ);
+						var index = new ChunkCoordinates(chunkX, chunkZ);
+						newOrders[index] = distance;
+					}
+				}
+
+				foreach (var chunkKey in chunks.ToArray())
+				{
+					if (!newOrders.ContainsKey(chunkKey))
+					{
+						chunks.Remove(chunkKey);
+					}
+				}
+
+				foreach (var chunkKey in chunksUsed.Keys.ToArray())
+				{
+					if (!newOrders.ContainsKey(chunkKey))
+					{
+						chunksUsed.Remove(chunkKey);
+					}
+				}
+
+				foreach (var pair in newOrders.OrderBy(pair => pair.Value))
+				{
+					if (chunksUsed.ContainsKey(pair.Key) || chunks.Contains(pair.Key))
+						continue;
+
+					chunks.Add(pair.Key);
+				}
+			}
+		}
+
+
 		public Block GetBlock(PlayerLocation location)
 		{
 			return GetBlock((BlockCoordinates) location);
@@ -1319,36 +1373,48 @@ namespace MiNET.Worlds
 			return !e.Cancel;
 		}
 
-		public void Interact(Player player, Item itemInHand, BlockCoordinates blockCoordinates, BlockFace face, Vector3 faceCoords)
+		public static void RevertItemIteration(Player player, Block block1, Block block2)
+		{
+			var message = McpeUpdateBlock.CreateObject();
+			message.blockRuntimeId = (uint) block1.GetRuntimeId();
+			message.coordinates = block1.Coordinates;
+			message.blockPriority = 0xb;
+			player.SendPacket(message);
+			message.blockRuntimeId = (uint) block2.GetRuntimeId();
+			message.coordinates = block2.Coordinates;
+			player.SendPacket(message);
+		}
+
+		public bool Interact(Player player, Item itemInHand, BlockCoordinates blockCoordinates, BlockFace face, Vector3 faceCoords)
 		{
 			Block target = GetBlock(blockCoordinates);
-			if (!player.IsSneaking && target.Interact(this, player, blockCoordinates, face, faceCoords)) return; // Handled in block interaction
+			if (!player.IsSneaking && target.Interact(this, player, blockCoordinates, face, faceCoords)) return true; // Handled in block interaction
+			target = GetBlock(blockCoordinates);
 
 			if (itemInHand is ItemBlock)
 			{
 				Block block = GetBlock(blockCoordinates);
+				var sourceCoordinates = itemInHand.GetNewCoordinatesFromFace(blockCoordinates, face);
 				if (!block.IsReplaceable)
 				{
 					block = GetBlock(itemInHand.GetNewCoordinatesFromFace(blockCoordinates, face));
 				}
 
-				if (!AllowBuild || player.GameMode == GameMode.Spectator || !OnBlockPlace(new BlockPlaceEventArgs(player, this, target, block)))
+				bool isAir = target is Air;
+
+				if (!AllowBuild || player.GameMode == GameMode.Spectator || itemInHand is ItemAir || isAir || !OnBlockPlace(new BlockPlaceEventArgs(player, this, target, block)))
 				{
 					// Revert
 
-					player.SendPlayerInventory();
-
-					var message = McpeUpdateBlock.CreateObject();
-					message.blockRuntimeId = (uint) block.GetRuntimeId();
-					message.coordinates = block.Coordinates;
-					message.blockPriority = 0xb;
-					player.SendPacket(message);
-
-					return;
+					player.Inventory.SendSetSlot(player.Inventory.InHandSlot);
+					ItemBlock.Revert(this, blockCoordinates, player);
+					ItemBlock.Revert(this, sourceCoordinates, player);
+					return false;
 				}
 			}
 
 			itemInHand.PlaceBlock(this, player, blockCoordinates, face, faceCoords);
+			return false;
 		}
 
 		public event EventHandler<BlockBreakEventArgs> BlockBreak;
@@ -1360,7 +1426,7 @@ namespace MiNET.Worlds
 			return !e.Cancel;
 		}
 
-		public void BreakBlock(Player player, BlockCoordinates blockCoordinates, BlockFace face = BlockFace.None)
+		public bool BreakBlock(Player player, BlockCoordinates blockCoordinates, BlockFace face = BlockFace.None)
 		{
 			Block block = GetBlock(blockCoordinates);
 			BlockEntity blockEntity = GetBlockEntity(blockCoordinates);
@@ -1373,18 +1439,21 @@ namespace MiNET.Worlds
 				// Revert
 
 				RevertBlockAction(player, block, blockEntity);
+				return false;
 			}
 			else
 			{
+				block = GetBlock(blockCoordinates);
 				BreakBlock(player, block, blockEntity, inHand, face);
 
 				player.Inventory.DamageItemInHand(ItemDamageReason.BlockBreak, null, block);
 				player.HungerManager.IncreaseExhaustion(0.025f);
 				player.ExperienceManager.AddExperience(block.GetExperiencePoints());
 			}
+			return true;
 		}
 
-		private static void RevertBlockAction(Player player, Block block, BlockEntity blockEntity)
+		public static void RevertBlockAction(Player player, Block block, BlockEntity blockEntity)
 		{
 			var message = McpeUpdateBlock.CreateObject();
 			message.blockRuntimeId = (uint) block.GetRuntimeId();

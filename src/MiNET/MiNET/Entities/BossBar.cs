@@ -38,11 +38,11 @@ namespace MiNET.Entities
 			{
 			}
 
-			public override void TakeHit(Entity source, Item tool, int damage = 1, DamageCause cause = DamageCause.Unknown)
+			public override void TakeHit(Entity source, Item tool, float damage = 1, DamageCause cause = DamageCause.Unknown)
 			{
 			}
 
-			public override void TakeHit(Entity source, int damage = 1, DamageCause cause = DamageCause.Unknown)
+			public override void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 			{
 			}
 

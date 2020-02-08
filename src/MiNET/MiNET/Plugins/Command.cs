@@ -23,7 +23,9 @@
 
 #endregion
 
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Reflection;
 using MiNET.Entities;
 using Newtonsoft.Json;
@@ -134,16 +136,25 @@ namespace MiNET.Plugins
 		public TargetData TargetData { get; set; }
 	}
 
-	public class TargetData
+	[AttributeUsage(AttributeTargets.Parameter)]
+	public class TargetData : Attribute
 	{
-		[JsonProperty(propertyName: "players_only")]
+		[JsonProperty(propertyName: "players_only"), DefaultValue(true)]
 		public bool PlayersOnly { get; set; }
 
-		[JsonProperty(propertyName: "main_target")]
+		[JsonProperty(propertyName: "main_target"), DefaultValue(true)]
 		public bool MainTarget { get; set; }
 
-		[JsonProperty(propertyName: "allow_dead_players")]
+		[JsonProperty(propertyName: "allow_dead_players"), DefaultValue(true)]
 		public bool AllowDeadPlayers { get; set; }
+
+		public override string ToString()
+		{
+			return $"players_only: {PlayersOnly}, main_target: {MainTarget}, allow_dead_players: {AllowDeadPlayers}";
+		}
+
+		[JsonIgnore]
+		public override object TypeId => base.TypeId;
 	}
 
 

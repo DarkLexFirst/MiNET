@@ -128,7 +128,7 @@ namespace MiNET.Blocks
 
 		protected virtual bool CanPlace(Level world, Player player, BlockCoordinates blockCoordinates, BlockCoordinates targetCoordinates, BlockFace face)
 		{
-			var playerBbox = (player.GetBoundingBox() - 0.01f);
+			var playerBbox = (player.GetBoundingBox() - 0.04f);
 			var blockBbox = GetBoundingBox();
 			if (playerBbox.Intersects(blockBbox))
 			{

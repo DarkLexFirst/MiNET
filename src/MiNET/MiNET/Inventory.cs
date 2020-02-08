@@ -124,7 +124,7 @@ namespace MiNET
 		}
 
 
-		private NbtList GetSlots()
+		public NbtList GetSlots()
 		{
 			NbtList slots = new NbtList("Items");
 			for (byte i = 0; i < Size; i++)

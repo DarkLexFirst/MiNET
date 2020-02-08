@@ -1,4 +1,4 @@
-#region LICENSE
+﻿#region LICENSE
 
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
@@ -53,19 +53,30 @@ namespace MiNET.UI
 			var parsedResult = JsonConvert.DeserializeObject<bool?>(json);
 			Log.Debug($"Form JSON\n{JsonConvert.SerializeObject(parsedResult, jsonSerializerSettings)}");
 
-			if (!parsedResult.HasValue) return;
-
-			if (parsedResult.Value)
+			if (parsedResult.HasValue)
 			{
-				Execute(player);
+				if (parsedResult.Value)
+					Execute(player);
+				else
+					Cancel(player);
 			}
 		}
 
 		[JsonIgnore] public Action<Player, ModalForm> ExecuteAction { get; set; }
+		[JsonIgnore] public Action<Player, ModalForm> CancelAction { get; set; }
+		[JsonIgnore] public Action<Player, ModalForm> CloseAction { get; set; }
 
-		public void Execute(Player player)
+		public virtual void Execute(Player player)
 		{
 			ExecuteAction?.Invoke(player, this);
+		}
+		public virtual void Cancel(Player player)
+		{
+			CancelAction?.Invoke(player, this);
+		}
+		public virtual void Close(Player player)
+		{
+			CloseAction?.Invoke(player, this);
 		}
 	}
 }

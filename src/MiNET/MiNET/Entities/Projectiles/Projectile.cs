@@ -42,10 +42,13 @@ namespace MiNET.Entities.Projectiles
 		public Player Shooter { get; set; }
 		public int Ttl { get; set; } = 0;
 		public bool DespawnOnImpact { get; set; } = true;
+		public bool DespawnOnEntityCollid { get; set; } = true;
 		public int Damage { get; set; }
 		public int PowerLevel { get; set; } = 0;
 		public float HitBoxPrecision { get; set; } = 0.3f;
 		public Vector3 Force { get; set; } = new Vector3();
+
+		public bool Collided { get; set; } = false;
 
 		public bool BroadcastMovement { get; set; } = false;
 
@@ -113,73 +116,81 @@ namespace MiNET.Entities.Projectiles
 
 			Entity entityCollided = CheckEntityCollide(KnownPosition, Velocity);
 
-			bool collided = false;
 			Block collidedWithBlock = null;
-			if (entityCollided != null)
+			if (!Collided)
 			{
-				double speed = Math.Sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y + Velocity.Z * Velocity.Z);
-				double damage = Math.Ceiling(speed * Damage);
-				if (IsCritical)
+				if (entityCollided != null)
 				{
-					damage += Level.Random.Next((int) (damage / 2 + 2));
-
-					McpeAnimate animate = McpeAnimate.CreateObject();
-					animate.runtimeEntityId = entityCollided.EntityId;
-					animate.actionId = 4;
-					Level.RelayBroadcast(animate);
-				}
-
-				if (PowerLevel > 0)
-				{
-					damage = damage + ((PowerLevel + 1) * 0.25);
-				}
-
-				Player player = entityCollided as Player;
-
-				if (player != null)
-				{
-					damage = player.DamageCalculator.CalculatePlayerDamage(this, player, null, damage, DamageCause.Projectile);
-					player.LastAttackTarget = entityCollided;
-				}
-
-				entityCollided.HealthManager.TakeHit(this, (int) damage, DamageCause.Projectile);
-				entityCollided.HealthManager.LastDamageSource = Shooter;
-
-				OnHitEntity(entityCollided);
-				DespawnEntity();
-				return;
-			}
-			else
-			{
-				var velocity2 = Velocity;
-				velocity2 *= (float) (1.0d - Drag);
-				velocity2 -= new Vector3(0, (float) Gravity, 0);
-				double distance = velocity2.Length();
-				velocity2 = Vector3.Normalize(velocity2) / 2;
-
-				for (int i = 0; i < Math.Ceiling(distance) * 2; i++)
-				{
-					Vector3 nextPos = KnownPosition.ToVector3();
-					nextPos.X += (float) velocity2.X * i;
-					nextPos.Y += (float) velocity2.Y * i;
-					nextPos.Z += (float) velocity2.Z * i;
-
-					Block block = Level.GetBlock(nextPos);
-					collided = block.IsSolid && block.GetBoundingBox().Contains(nextPos);
-					if (collided)
+					double speed = Math.Sqrt(Velocity.X * Velocity.X + Velocity.Y * Velocity.Y + Velocity.Z * Velocity.Z);
+					double damage = Math.Ceiling(speed * Damage);
+					if (IsCritical)
 					{
-						SetIntersectLocation(block.GetBoundingBox(), KnownPosition.ToVector3());
-						collidedWithBlock = block;
-						break;
+						damage += Level.Random.Next((int) (damage / 2 + 2));
+
+						McpeAnimate animate = McpeAnimate.CreateObject();
+						animate.runtimeEntityId = entityCollided.EntityId;
+						animate.actionId = 4;
+						Level.RelayBroadcast(animate);
+					}
+
+					if (PowerLevel > 0)
+					{
+						damage = damage + ((PowerLevel + 1) * 0.25);
+					}
+
+					Player player = entityCollided as Player;
+
+					if (player != null)
+					{
+						damage = player.DamageCalculator.CalculatePlayerDamage(this, player, null, damage, DamageCause.Projectile);
+						player.LastAttackTarget = entityCollided;
+					}
+
+					entityCollided.HealthManager.TakeHit(this, (int) damage, DamageCause.Projectile);
+					entityCollided.HealthManager.LastDamageSource = Shooter;
+
+					OnHitEntity(entityCollided);
+					if (DespawnOnEntityCollid)
+					{
+						DespawnEntity();
+						return;
+					}
+					Collided = true;
+				}
+				else
+				{
+					var velocity2 = Velocity;
+					velocity2 *= (float) (1.0d - Drag);
+					velocity2 -= new Vector3(0, (float) Gravity, 0);
+					double distance = velocity2.Length();
+					velocity2 = Vector3.Normalize(velocity2) / 2;
+
+					for (int i = 0; i < Math.Ceiling(distance) * 2; i++)
+					{
+						Vector3 nextPos = KnownPosition.ToVector3();
+						nextPos.X += (float) velocity2.X * i;
+						nextPos.Y += (float) velocity2.Y * i;
+						nextPos.Z += (float) velocity2.Z * i;
+
+						Block block = Level.GetBlock(nextPos);
+						Collided = block.IsSolid && block.GetBoundingBox().Contains(nextPos);
+						if (Collided)
+						{
+							SetIntersectLocation(block.GetBoundingBox(), KnownPosition.ToVector3());
+							collidedWithBlock = block;
+							break;
+						}
 					}
 				}
 			}
 
 			bool sendPosition = Velocity != Vector3.Zero;
 
-			if (collided)
+			if (Collided)
 			{
 				Velocity = Vector3.Zero;
+				IsCritical = false;
+				BroadcastSetEntityData();
 			}
 			else
 			{
@@ -203,7 +214,7 @@ namespace MiNET.Entities.Projectiles
 				BroadcastMoveAndMotion();
 			}
 
-			if (collided)
+			if (Collided)
 			{
 				OnHitBlock(collidedWithBlock);
 			}

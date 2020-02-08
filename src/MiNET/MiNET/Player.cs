@@ -186,7 +186,7 @@ namespace MiNET
 
 		protected Form CurrentForm { get; set; } = null;
 
-		public void HandleMcpeModalFormResponse(McpeModalFormResponse message)
+		public virtual void HandleMcpeModalFormResponse(McpeModalFormResponse message)
 		{
 			if (CurrentForm == null) Log.Warn("No current form set for player when processing response");
 
@@ -1712,6 +1712,7 @@ namespace MiNET
 			McpeMobEquipment mobEquipment = McpeMobEquipment.CreateObject();
 			mobEquipment.runtimeEntityId = EntityManager.EntityIdSelf;
 			mobEquipment.item = Inventory.GetItemInHand();
+			mobEquipment.selectedSlot = (byte) Inventory.InHandSlot;
 			mobEquipment.slot = (byte) Inventory.InHandSlot;
 			SendPacket(mobEquipment);
 
@@ -2094,7 +2095,7 @@ namespace MiNET
 			}
 		}
 
-		private void OnInventoryChange(Player player, Inventory inventory, byte slot, Item itemStack)
+		public void OnInventoryChange(Player player, Inventory inventory, byte slot, Item itemStack)
 		{
 			if (player == this)
 			{
@@ -2567,6 +2568,27 @@ namespace MiNET
 			}
 		}
 
+		public void SlotUpdateRevert(ContainerTransactionRecord record, Transaction transaction = null)
+		{
+			transaction?.TransactionRecords.Remove(record);
+			if (record.InventoryId == 0x7c)
+				return; // bag with cursor slot replacing
+			switch (record.InventoryId)
+			{
+				case 0:
+					Inventory.SendSetSlot(record.Slot);
+					return;
+				case 0x78:
+					var arm = Inventory.GetArmor();
+					SendSetSlot(arm[record.Slot], record.Slot, record.InventoryId);
+					return;
+				case 0x77:
+					SendSetSlot(Inventory.LeftHand, record.InventoryId);
+					return;
+			}
+			SendSetSlot(Inventory.GetSlot(record.Slot, record.InventoryId), record.Slot, record.InventoryId);
+		}
+
 		public virtual ItemEntity DropItem(Item item)
 		{
 			var itemEntity = new ItemEntity(Level, item)
@@ -2577,6 +2599,11 @@ namespace MiNET
 			itemEntity.SpawnEntity();
 
 			return itemEntity;
+		}
+
+		public virtual bool PickUpItem(ItemEntity item)
+		{
+			return true;
 		}
 
 		private bool VerifyRecipe(List<Item> craftingInput, Item result)
@@ -2983,13 +3010,15 @@ namespace MiNET
 				if (Level == null) return;
 
 				SendNetworkChunkPublisherUpdate();
-				int packetCount = 0;
-				foreach (McpeWrapper chunk in Level.GenerateChunks(_currentChunkPosition, _chunksUsed, ChunkRadius))
-				{
-					if (chunk != null) SendPacket(chunk);
 
-					if (++packetCount % 16 == 0) Thread.Sleep(12);
-				}
+				Level.GetChunks(_currentChunkPosition, _chunksUsed, _chunksToLoad, ChunkRadius);
+				//int packetCount = 0;
+				//foreach (McpeWrapper chunk in Level.GenerateChunks(_currentChunkPosition, _chunksUsed, ChunkRadius))
+				//{
+				//	if (chunk != null) SendPacket(chunk);
+
+				//	if (++packetCount % 16 == 0) Thread.Sleep(12);
+				//}
 			}
 			finally
 			{
@@ -3027,16 +3056,23 @@ namespace MiNET
 
 				SendNetworkChunkPublisherUpdate();
 
-				foreach (McpeWrapper chunk in Level.GenerateChunks(_currentChunkPosition, _chunksUsed, ChunkRadius))
+				Level.GetChunks(_currentChunkPosition, _chunksUsed, _chunksToLoad, ChunkRadius);
+
+				//foreach (McpeWrapper chunk in Level.GenerateChunks(_currentChunkPosition, _chunksUsed, ChunkRadius))
+				//{
+				//	if (chunk != null) SendPacket(chunk);
+
+				//	if (++packetCount % 16 == 0) Thread.Sleep(12);
+
+				//	if (!IsSpawned && packetCount == 56)
+				//	{
+				//		InitializePlayer();
+				//	}
+				//}
+
+				if (!IsSpawned/* && _chunksUsed.Count == 56*/)
 				{
-					if (chunk != null) SendPacket(chunk);
-
-					if (++packetCount % 16 == 0) Thread.Sleep(12);
-
-					if (!IsSpawned && packetCount == 56)
-					{
-						InitializePlayer();
-					}
+					InitializePlayer();
 				}
 
 				Log.Debug($"Sent {packetCount} chunks for {chunkPosition}");
@@ -3049,6 +3085,51 @@ namespace MiNET
 			{
 				Monitor.Exit(_sendChunkSync);
 			}
+		}
+
+		private List<ChunkCoordinates> _chunksToLoad = new List<ChunkCoordinates>();
+		private const int chunksPerTick = 1;
+
+		private void ChunkLoadProcessiong()
+		{
+			MiNetServer.FastThreadPool.QueueUserWorkItem(() =>
+			{
+				int loadedChunks = 0;
+				while (_chunksToLoad.Count > 0)
+				{
+					var chunkPos = _chunksToLoad.First();
+					_chunksToLoad.Remove(chunkPos);
+
+					if (_chunksUsed.ContainsKey(chunkPos))
+						continue;
+
+					_chunksUsed.Add(chunkPos, null); //reserving
+
+					McpeWrapper batch = null;
+					try
+					{
+						ChunkColumn chunk = Level.GetChunk(chunkPos);
+						batch = chunk?.GetBatch();
+					}
+					catch
+					{
+						_chunksUsed.Remove(chunkPos);
+						continue;
+					}
+
+					if (batch == null)
+					{
+						_chunksUsed.Remove(chunkPos);
+						continue;
+					}
+
+					_chunksUsed[chunkPos] = batch;
+					SendPacket(batch);
+
+					if (++loadedChunks >= chunksPerTick)
+						break;
+				}
+			});
 		}
 
 		public virtual void SendUpdateAttributes()
@@ -3266,6 +3347,7 @@ namespace MiNET
 				}
 			}
 
+			ChunkLoadProcessiong();
 			OnTicked(new PlayerEventArgs(this));
 		}
 
@@ -3532,6 +3614,7 @@ namespace MiNET
 			lock (_sendChunkSync)
 			{
 				_chunksUsed.Clear();
+				_chunksToLoad.Clear();
 			}
 		}
 

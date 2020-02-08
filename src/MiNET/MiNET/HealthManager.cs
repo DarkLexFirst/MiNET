@@ -86,6 +86,7 @@ namespace MiNET
 		public int FireTick { get; set; }
 		public int SuffocationTicks { get; set; }
 		public int LavaTicks { get; set; }
+		public int CactusTicks { get; set; }
 		public int CooldownTick { get; set; }
 		public bool IsOnFire { get; set; }
 		public bool IsInvulnerable { get; set; }
@@ -120,18 +121,18 @@ namespace MiNET
 			}
 		}
 
-		public virtual void TakeHit(Entity source, int damage = 1, DamageCause cause = DamageCause.Unknown)
+		public virtual void TakeHit(Entity source, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
 			TakeHit(source, null, damage, cause);
 		}
 
-		public virtual void TakeHit(Entity source, Item tool, int damage = 1, DamageCause cause = DamageCause.Unknown)
+		public virtual void TakeHit(Entity source, Item tool, float damage = 1, DamageCause cause = DamageCause.Unknown)
 		{
 			var player = Entity as Player;
 			if (player != null && player.GameMode != GameMode.Survival) return;
 
 
-			if (CooldownTick > 0) return;
+			if (CooldownTick > 0 && cause == DamageCause.EntityAttack) return;
 
 			LastDamageSource = source;
 			LastDamageCause = cause;
@@ -157,8 +158,8 @@ namespace MiNET
 				if (Entity.Level.Difficulty <= Difficulty.Normal && Hearts <= 1) return;
 			}
 
-			Health -= damage * 10;
-			if (Health < 0)
+			Health -= (int) (damage * 10);
+			if (Health <= 0)
 			{
 				OnPlayerTakeHit(new HealthEventArgs(this, source, Entity));
 				Health = 0;
@@ -180,7 +181,8 @@ namespace MiNET
 				DoKnockback(source, tool);
 			}
 
-			CooldownTick = 10;
+			if (cause == DamageCause.EntityAttack)
+				CooldownTick = 10;
 
 			OnPlayerTakeHit(new HealthEventArgs(this, source, Entity));
 		}
@@ -374,6 +376,7 @@ namespace MiNET
 					if (Math.Abs(Air) % 10 == 0)
 					{
 						TakeHit(null, 1, DamageCause.Drowning);
+						Air = 0;
 						Entity.BroadcastSetEntityData();
 					}
 				}
@@ -419,6 +422,11 @@ namespace MiNET
 
 			if (IsInLava(Entity.KnownPosition))
 			{
+				if (Entity is Player player)
+				{
+					if (player.GameMode == GameMode.Creative || player.GameMode == GameMode.Spectator)
+						return;
+				}
 				if (LastDamageCause.Equals(DamageCause.Lava))
 				{
 					FireTick += 2;
@@ -457,8 +465,7 @@ namespace MiNET
 					var player = Entity as Player;
 					if (player != null)
 					{
-						player.DamageCalculator.CalculatePlayerDamage(null, player, null, 1, DamageCause.FireTick);
-						TakeHit(null, 1, DamageCause.FireTick);
+						TakeHit(null, (float) player.DamageCalculator.CalculatePlayerDamage(null, player, null, 1, DamageCause.FireTick), DamageCause.FireTick);
 					}
 					else
 					{

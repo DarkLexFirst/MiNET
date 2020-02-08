@@ -7035,7 +7035,9 @@ namespace MiNET.Net
 			BeforeEncode();
 
 			Write(name);
-			Write(coordinates);
+			WriteSignedVarInt(coordinates.X << 3);
+			WriteSignedVarInt(coordinates.Y << 2);
+			WriteSignedVarInt(coordinates.Z << 3);
 			Write(volume);
 			Write(pitch);
 
@@ -7052,7 +7054,7 @@ namespace MiNET.Net
 			BeforeDecode();
 
 			name = ReadString();
-			coordinates = ReadBlockCoordinates();
+			coordinates = new BlockCoordinates(ReadSignedVarInt() >> 3, ReadSignedVarInt() >> 2, ReadSignedVarInt() >> 3);
 			volume = ReadFloat();
 			pitch = ReadFloat();
 

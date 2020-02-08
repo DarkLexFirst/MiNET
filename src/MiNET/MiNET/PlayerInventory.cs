@@ -149,6 +149,22 @@ namespace MiNET
 			SendSetSlot(slot);
 		}
 
+		[Wired]
+		public virtual void DecreaseSlot(int slot, byte damage = 1)
+		{
+			//lock (this)
+			{
+				var existing = Slots[slot];
+				if (existing.Count <= damage)
+				{
+					Slots[slot] = new ItemAir();
+				}
+				else
+					existing.Count -= damage;
+				SendSetSlot(slot);
+			}
+		}
+
 		public virtual void UpdateInventorySlot(int slot, Item item)
 		{
 			var existing = Slots[slot];
@@ -166,7 +182,7 @@ namespace MiNET
 		public ItemStacks GetSlots()
 		{
 			ItemStacks slotData = new ItemStacks();
-			for (int i = 0; i < Slots.Count; i++)
+			for (int i = 0; i < Slots.Count - HotbarSize; i++)
 			{
 				if (Slots[i].Count == 0) Slots[i] = new ItemAir();
 				slotData.Add(Slots[i]);
@@ -188,7 +204,7 @@ namespace MiNET
 
 		public virtual bool SetFirstEmptySlot(Item item, bool update)
 		{
-			for (int si = 0; si < Slots.Count; si++)
+			for (int si = 0; si < Slots.Count - HotbarSize; si++)
 			{
 				Item existingItem = Slots[si];
 
@@ -207,7 +223,7 @@ namespace MiNET
 				}
 			}
 
-			for (int si = 0; si < Slots.Count; si++)
+			for (int si = 0; si < Slots.Count - HotbarSize; si++)
 			{
 				if (FirstEmptySlot(item, update, si)) return true;
 			}
@@ -232,7 +248,7 @@ namespace MiNET
 
 		public bool AddItem(Item item, bool update)
 		{
-			for (int si = 0; si < Slots.Count; si++)
+			for (int si = 0; si < Slots.Count - HotbarSize; si++)
 			{
 				Item existingItem = Slots[si];
 
@@ -279,24 +295,53 @@ namespace MiNET
 			SetInventorySlot(slot, new ItemAir());
 		}
 
-		public bool HasItem(Item item)
+		public bool HasItem(Item item, bool countSearch = false, bool extradata = false)
 		{
-			for (byte i = 0; i < Slots.Count; i++)
+			int count = 0;
+			for (byte i = 0; i < Slots.Count - HotbarSize; i++)
 			{
-				if (Slots[i].Id == item.Id && Slots[i].Metadata == item.Metadata)
+				if (Slots[i].Equals(item, false, extradata))
 				{
-					return true;
+					if (!countSearch)
+						return true;
+					count += Slots[i].Count;
 				}
 			}
-
+			if (count >= item.Count)
+				return true;
 			return false;
+		}
+
+		public void RemoveItems(Item item, bool extradata = true, bool update = true)
+		{
+			//lock (this)
+			{
+				short count = item.Count;
+
+				for (byte i = 0; i < Slots.Count - HotbarSize && count > 0; i++)
+				{
+					var slot = Slots[i];
+					if (slot.Equals(item, false, extradata))
+					{
+						var diff = slot.Count;
+						if (count >= diff)
+							Slots[i] = new ItemAir();
+						else
+							Slots[i].Count -= (byte) count;
+						count -= diff;
+
+						if (update)
+							SendSetSlot(i);
+					}
+				}
+			}
 		}
 
 		public void RemoveItems(short id, byte count)
 		{
 			if (count <= 0) return;
 
-			for (byte i = 0; i < Slots.Count; i++)
+			for (byte i = 0; i < Slots.Count - HotbarSize; i++)
 			{
 				if (count <= 0) break;
 
@@ -354,7 +399,7 @@ namespace MiNET
 					var openInventory = Player.GetOpenInventory();
 					if (openInventory != null)
 					{
-						if (openInventory is Inventory inventory && inventory.WindowsId == inventoryId)
+						if (openInventory is Inventory inventory/* && inventory.WindowsId == inventoryId*/)
 						{
 							return inventory.GetSlot((byte) slot);
 						}

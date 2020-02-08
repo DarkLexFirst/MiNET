@@ -71,10 +71,12 @@ namespace MiNET.Items
 
 		public virtual void UseItem(Level world, Player player, BlockCoordinates blockCoordinates)
 		{
+			//TryPutOn(player);
 		}
 
 		public virtual void PlaceBlock(Level world, Player player, BlockCoordinates blockCoordinates, BlockFace face, Vector3 faceCoords)
 		{
+			//TryPutOn(player);
 		}
 
 		public virtual bool BreakBlock(Level world, Player player, Block block, BlockEntity blockEntity)
@@ -109,6 +111,27 @@ namespace MiNET.Items
 		public virtual bool Animate(Level world, Player player)
 		{
 			return false;
+		}
+
+		public BlockCoordinates GetOldCoordinatesFromFace(BlockCoordinates target, BlockFace face)
+		{
+			switch (face)
+			{
+				case BlockFace.Down:
+					return target - Level.Down;
+				case BlockFace.Up:
+					return target - Level.Up;
+				case BlockFace.East:
+					return target - Level.East;
+				case BlockFace.West:
+					return target - Level.West;
+				case BlockFace.North:
+					return target - Level.North;
+				case BlockFace.South:
+					return target - Level.South;
+				default:
+					return target;
+			}
 		}
 
 		public BlockCoordinates GetNewCoordinatesFromFace(BlockCoordinates target, BlockFace face)
@@ -194,9 +217,42 @@ namespace MiNET.Items
 		{
 		}
 
-		protected bool Equals(Item other)
+		public virtual void TryPutOn(Player player)
+		{
+			if (ItemType >= ItemType.Helmet)
+			{
+				if (player.Inventory.GetSlot((int) ItemType - 6, 120) is ItemAir)
+				{
+					Item armor = player.Inventory.GetItemInHand();
+					player.Inventory.ClearInventorySlot((byte) player.Inventory.InHandSlot);
+					switch (ItemType)
+					{
+						case ItemType.Helmet:
+							player.Inventory.Helmet = armor;
+							break;
+						case ItemType.Chestplate:
+							player.Inventory.Chest = armor;
+							break;
+						case ItemType.Leggings:
+							player.Inventory.Leggings = armor;
+							break;
+						case ItemType.Boots:
+							player.Inventory.Boots = armor;
+							break;
+					}
+
+					player.SendPlayerInventory();
+				}
+			}
+		}
+
+		public bool Equals(Item other, bool count = false, bool extradata = true)
 		{
 			if (Id != other.Id || Metadata != other.Metadata) return false;
+			if(count && Count != other.Count) return false;
+
+			if(!extradata) return true;
+
 			if (ExtraData == null ^ other.ExtraData == null) return false;
 
 			byte[] saveToBuffer = null;
@@ -213,16 +269,17 @@ namespace MiNET.Items
 				saveToBuffer2 = new NbtFile(ExtraData).SaveToBuffer(NbtCompression.None);
 			}
 			var nbtCheck = !(saveToBuffer == null ^ saveToBuffer2 == null);
-			if (nbtCheck)
+			if (nbtCheck && saveToBuffer != null)
 			{
-				if (saveToBuffer == null)
-				{
-					nbtCheck = true;
-				}
-				else
-				{
-					nbtCheck = saveToBuffer.SequenceEqual(saveToBuffer2);
-				}
+				nbtCheck = saveToBuffer.OrderBy(i => i).SequenceEqual(saveToBuffer2.OrderBy(i => i));
+				//if (saveToBuffer == null)
+				//{
+				//	nbtCheck = true;
+				//}
+				//else
+				//{
+				//	nbtCheck = saveToBuffer.SequenceEqual(saveToBuffer2);
+				//}
 			}
 			return nbtCheck;
 		}

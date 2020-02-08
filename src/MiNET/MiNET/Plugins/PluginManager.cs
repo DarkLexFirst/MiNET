@@ -428,6 +428,7 @@ namespace MiNET.Plugins
 							}
 						}
 					}
+					param.TargetData = Attribute.GetCustomAttribute(parameter, typeof(TargetData), false) as TargetData;
 					inputParams.Add(param);
 				}
 
@@ -474,6 +475,12 @@ namespace MiNET.Plugins
 				value = "int";
 			else if (parameter.PropertyType == typeof(byte))
 				value = "int";
+			else if (parameter.PropertyType == typeof(float))
+				value = "float";
+			else if (parameter.PropertyType == typeof(double))
+				value = "float";
+			else if (parameter.PropertyType == typeof(decimal))
+				value = "float";
 			else if (parameter.PropertyType == typeof(bool))
 				value = "bool";
 			else if (parameter.PropertyType == typeof(string))
@@ -501,6 +508,8 @@ namespace MiNET.Plugins
 			else if (parameter.ParameterType == typeof(float))
 				value = "float";
 			else if (parameter.ParameterType == typeof(double))
+				value = "float";
+			else if (parameter.ParameterType == typeof(decimal))
 				value = "float";
 			else if (parameter.ParameterType == typeof(bool))
 				value = "bool";
@@ -661,6 +670,7 @@ namespace MiNET.Plugins
 			if (command == null)
 			{
 				Log.Warn($"Found no command {commandName}");
+				player.SendMessage($"§7[§cX§7] §cUnknown command \"/{commandName}\"!");
 				return null;
 			}
 
@@ -691,6 +701,7 @@ namespace MiNET.Plugins
 
 				Log.Debug("No command executed");
 			}
+			player.SendMessage("§7[§cX§7] §cIncorrect command syntax!");
 
 			return null;
 		}
@@ -783,7 +794,7 @@ namespace MiNET.Plugins
 		{
 			Log.Info($"Execute command {method}, {string.Join(',', args)}");
 
-			result = null;
+			result = new object();
 
 			ParameterInfo[] parameters = method.GetParameters();
 
@@ -1054,11 +1065,11 @@ namespace MiNET.Plugins
 		{
 			Target target = ParseTarget(source);
 
-			if (target.Selector == "closestPlayer" && target.Rules == null)
+			if (target.Selector == "nearestPlayer" && target.Rules == null)
 			{
 				target.Players = new[] {commander};
 			}
-			else if (target.Selector == "closestPlayer" && target.Rules != null)
+			else if (target.Selector == "nearestPlayer" && target.Rules != null)
 			{
 				string username = target.Rules.First().Value;
 				var players = level.GetAllPlayers().Where(p => p.Username == username);
@@ -1087,7 +1098,7 @@ namespace MiNET.Plugins
 			Target target = new Target();
 			if (!source.StartsWith("@"))
 			{
-				target.Selector = "closestPlayer";
+				target.Selector = "nearestPlayer";
 				target.Rules = new[]
 				{
 					new Target.Rule()
