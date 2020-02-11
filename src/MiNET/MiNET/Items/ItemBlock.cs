@@ -106,42 +106,45 @@ namespace MiNET.Items
 
 		public override void PlaceBlock(Level world, Player player, BlockCoordinates targetCoordinates, BlockFace face, Vector3 faceCoords)
 		{
-			Block block = world.GetBlock(targetCoordinates);
-			var sourceCoordinates = GetNewCoordinatesFromFace(targetCoordinates, face);
-			Block.Coordinates = block.IsReplaceable ? targetCoordinates : sourceCoordinates;
+			Block currentBlock = world.GetBlock(targetCoordinates);
+			Block newBlock = BlockFactory.GetBlockById(Block.Id);
+			newBlock.Coordinates = currentBlock.IsReplaceable ? targetCoordinates : GetNewCoordinatesFromFace(targetCoordinates, face);
 
-			Block.Metadata = (byte) Metadata;
+			// This won't work without explicit mapping where an item dictates
+			// the initial value of a block. Need some sort of manual mapping or from
+			// generated data. The logic belong to the item.
+			// Basically what we want to do here is to check all items for a blockstate
+			// and find a matching one. Then use the blockstate for that item, to set the
+			// default data for this item.
+			newBlock.SetState(Block.GetState());
 
-			if (!Block.CanPlace(world, player, targetCoordinates, face))
+			//newBlock.Metadata = (byte) Metadata;
+
+			if (!newBlock.CanPlace(world, player, targetCoordinates, face))
 			{
 				Revert(world, targetCoordinates, player);
-				Revert(world, sourceCoordinates, player);
+				Revert(world, newBlock.Coordinates, player);
 				return;
 			}
 
-			if (!Block.PlaceBlock(world, player, targetCoordinates, face, faceCoords))
+			if (!newBlock.PlaceBlock(world, player, targetCoordinates, face, faceCoords))
 			{
-				world.SetBlock(Block);
+				world.SetBlock(newBlock);
 			}
 			else
 			{
 				Revert(world, targetCoordinates, player);
-				Revert(world, sourceCoordinates, player);
+				Revert(world, newBlock.Coordinates, player);
 			}
 
-			if (player.GameMode == GameMode.Survival && Block.Id != 0)
+			if (player.GameMode == GameMode.Survival && newBlock.Id != 0)
 			{
-				player.Inventory.DecreaseSlot(player.Inventory.InHandSlot);
+				var itemInHand = player.Inventory.GetItemInHand();
+				itemInHand.Count--;
+				player.Inventory.SetInventorySlot(player.Inventory.InHandSlot, itemInHand);
 			}
 
-			//McpeLevelSoundEvent s = McpeLevelSoundEvent.CreateObject();
-			//s.soundId = 5;
-			//s.position = Block.Coordinates;
-			//s.blockId = Block.Id;
-			//s. = 1;
-			//s.unknown1 = false;
-			//s.disableRelativeVolume = false;
-			//world.RelayBroadcast(s);
+			world.BroadcastSound(newBlock.Coordinates, LevelSoundEventType.Place, newBlock.Id);
 		}
 
 		public static void Revert(Level world, BlockCoordinates coordinates, Player player)

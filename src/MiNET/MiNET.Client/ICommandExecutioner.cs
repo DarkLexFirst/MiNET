@@ -200,7 +200,7 @@ namespace MiNET.Client
 			WritePaletteToJson(palette);
 		}
 
-		private static void WritePaletteToJson(BlockPalette palette)
+		public static void WritePaletteToJson(BlockPalette palette)
 		{
 			var jsonSerializerSettings = new JsonSerializerSettings
 			{
@@ -216,7 +216,7 @@ namespace MiNET.Client
 
 			var records = palette.OrderBy(bs => bs.Id).ThenBy(bs => bs.Data).ToArray();
 
-			string fileName = Path.GetTempPath() + "blockstates_" + Guid.NewGuid() + ".json";
+			string fileName = Path.GetTempPath() + "blockstates1_" + Guid.NewGuid() + ".json";
 			var writer = File.AppendText(fileName);
 			bool isFirst = true;
 			writer.WriteLine("[");

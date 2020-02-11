@@ -194,6 +194,7 @@ namespace MiNET.Client
 
 		public override void HandleMcpeUpdateBlock(McpeUpdateBlock message)
 		{
+			Console.WriteLine(message.blockRuntimeId);
 			CallPacketHandlers(message);
 		}
 
@@ -206,6 +207,7 @@ namespace MiNET.Client
 
 			BlockPalette blockPalette = message.blockPalette;
 			Client.BlockPalette = blockPalette;
+			PlaceAllBlocksExecutioner.WritePaletteToJson(blockPalette);
 
 			Log.Warn($"Got position from startgame packet: {Client.CurrentLocation}");
 

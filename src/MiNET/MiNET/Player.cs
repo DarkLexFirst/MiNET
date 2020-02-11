@@ -2971,11 +2971,13 @@ namespace MiNET
 				_currentChunkPosition = chunkPosition;
 
 				if (Level == null) return;
+				int k = ChunkRadius + 2;
 
-				for (int x = -1; x <= 1; x++)
+				for (int x = -k; x <= k; x++)
 				{
-					for (int z = -1; z <= 1; z++)
+					for (int z = -k; z <= k; z++)
 					{
+						if (x * x + z * z > k * k) continue;
 						var chunk = new McpeLevelChunk();
 						chunk.chunkX = chunkPosition.X + x;
 						chunk.chunkZ = chunkPosition.Z + z;
