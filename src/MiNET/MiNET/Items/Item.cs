@@ -248,6 +248,7 @@ namespace MiNET.Items
 
 		public bool Equals(Item other, bool count = false, bool extradata = true)
 		{
+			if (ReferenceEquals(null, other)) return false;
 			if (Id != other.Id || Metadata != other.Metadata) return false;
 			if(count && Count != other.Count) return false;
 
@@ -302,7 +303,9 @@ namespace MiNET.Items
 
 		public object Clone()
 		{
-			return MemberwiseClone();
+			var item = (Item) MemberwiseClone();
+			item.ExtraData = (NbtCompound) ExtraData?.Clone();
+			return item;
 		}
 
 		public override string ToString()

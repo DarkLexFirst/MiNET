@@ -2304,7 +2304,8 @@ namespace MiNET
 			{
 				case McpeInventoryTransaction.ItemUseAction.Place:
 				{
-					Level.Interact(this, itemInHand, transaction.Position, (BlockFace) transaction.Face, transaction.ClickPosition);
+					if (!Level.Interact(this, itemInHand, transaction.Position, (BlockFace) transaction.Face, transaction.ClickPosition))
+						return;
 					break;
 				}
 				case McpeInventoryTransaction.ItemUseAction.Use:
@@ -2568,9 +2569,9 @@ namespace MiNET
 			}
 		}
 
-		public void SlotUpdateRevert(ContainerTransactionRecord record, Transaction transaction = null)
+		public void SlotUpdateRevert(ContainerTransactionRecord record, List<TransactionRecord> transactionRecords = null)
 		{
-			transaction?.TransactionRecords.Remove(record);
+			transactionRecords?.Remove(record);
 			if (record.InventoryId == 0x7c)
 				return; // bag with cursor slot replacing
 			switch (record.InventoryId)
