@@ -71,12 +71,12 @@ namespace MiNET.Items
 
 		public virtual void UseItem(Level world, Player player, BlockCoordinates blockCoordinates)
 		{
-			//TryPutOn(player);
+			TryPutOn(player);
 		}
 
 		public virtual void PlaceBlock(Level world, Player player, BlockCoordinates blockCoordinates, BlockFace face, Vector3 faceCoords)
 		{
-			//TryPutOn(player);
+			TryPutOn(player);
 		}
 
 		public virtual bool BreakBlock(Level world, Player player, Block block, BlockEntity blockEntity)
@@ -208,6 +208,43 @@ namespace MiNET.Items
 			return GetSwordDamage(itemMaterial) - 3;
 		}
 
+		public int GetArmorDurability()
+		{
+			int durability = 0;
+			int c = 0;
+			switch (ItemType)
+			{
+				case ItemType.Helmet:
+					durability = 56;
+					c = 22;
+					break;
+				case ItemType.Chestplate:
+					durability = 81;
+					c = 32;
+					break;
+				case ItemType.Leggings:
+					durability = 76;
+					c = 30;
+					break;
+				case ItemType.Boots:
+					durability = 66;
+					c = 26;
+					break;
+			}
+
+			switch (ItemMaterial)
+			{
+				case ItemMaterial.Gold:
+					return durability + c;
+				case ItemMaterial.Chain:
+				case ItemMaterial.Iron:
+					return durability + c * 5;
+				case ItemMaterial.Diamond:
+					return durability + c * 14;
+			}
+				return durability;
+		}
+
 		public virtual Item GetSmelt()
 		{
 			return null;
@@ -221,27 +258,33 @@ namespace MiNET.Items
 		{
 			if (ItemType >= ItemType.Helmet)
 			{
-				if (player.Inventory.GetSlot((int) ItemType - 6, 120) is ItemAir)
+				var currentItem = player.Inventory.GetSlot((int) ItemType - 6, 120);
+				if (currentItem is ItemAir || currentItem.ItemType >= ItemType.Helmet)
 				{
 					Item armor = player.Inventory.GetItemInHand();
-					player.Inventory.ClearInventorySlot((byte) player.Inventory.InHandSlot);
+					Item replaceItem = new ItemAir();
 					switch (ItemType)
 					{
 						case ItemType.Helmet:
+							replaceItem = player.Inventory.Helmet;
 							player.Inventory.Helmet = armor;
 							break;
 						case ItemType.Chestplate:
+							replaceItem = player.Inventory.Chest;
 							player.Inventory.Chest = armor;
 							break;
 						case ItemType.Leggings:
+							replaceItem = player.Inventory.Leggings;
 							player.Inventory.Leggings = armor;
 							break;
 						case ItemType.Boots:
+							replaceItem = player.Inventory.Boots;
 							player.Inventory.Boots = armor;
 							break;
 					}
 
-					player.SendPlayerInventory();
+					player.Inventory.SetInventorySlot((byte) player.Inventory.InHandSlot, replaceItem);
+					player.SendArmorForPlayer();
 				}
 			}
 		}

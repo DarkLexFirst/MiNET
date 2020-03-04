@@ -30,6 +30,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using log4net;
 using MiNET.Entities;
+using MiNET.Entities.Projectiles;
 using MiNET.Items;
 using MiNET.Net;
 using MiNET.Utils;
@@ -182,7 +183,7 @@ namespace MiNET
 			}
 
 			if (cause == DamageCause.EntityAttack)
-				CooldownTick = 10;
+				CooldownTick = 8;
 
 			OnPlayerTakeHit(new HealthEventArgs(this, source, Entity));
 			return true;
@@ -215,14 +216,37 @@ namespace MiNET
 				motY = 0.4;
 			}
 
+
 			var velocity = new Vector3((float) motX, (float) motY + 0.0f, (float) motZ);
+			if (source is Projectile p)
+			{
+				var dir = source.KnownPosition.GetDirection() * knockbackMultiplier;
+				//double motX = 0;
+				//motX -= dx/knockbackForce*knockbackMultiplier;
+				//double motY = knockbackMultiplier;
+				//double motZ = 0;
+				//motZ -= dz/knockbackForce*knockbackMultiplier;
+				//if (motY > 0.4)
+				//{
+				//	motY = 0.4;
+				//}
+
+				velocity = Vector3.Normalize(source.Velocity) * knockbackMultiplier * p.Knockback;
+				velocity.Y *= 0.4f;
+			}
+			else
+			{
+				velocity.Y = knockbackMultiplier * 0.7f;
+				//velocity = Vector3.Normalize(((Vector3) Entity.KnownPosition - source.KnownPosition)) * (knockbackMultiplier + 0.07f);
+			}
 
 			if (tool != null)
 			{
 				var knockback = tool.GetEnchantingLevel(EnchantingType.Knockback);
-				velocity += Vector3.Normalize(velocity) * new Vector3(knockback * 0.5f, 0.1f, knockback * 0.5f);
+				velocity += Vector3.Normalize(velocity) * new Vector3(knockback * 0.4f, 0.1f, knockback * 0.4f);
 			}
 
+			//Entity.Velocity = Vector3.Zero;
 			Entity.Knockback(velocity);
 		}
 

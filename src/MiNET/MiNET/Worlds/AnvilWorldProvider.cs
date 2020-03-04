@@ -89,6 +89,7 @@ namespace MiNET.Worlds
 			var air = new Mapper(0, (i, b) => 0);
 			Convert = new Dictionary<int, Tuple<int, Func<int, byte, byte>>>
 			{
+				//{26, new Mapper(26, (i, b) => (byte) (b & 0x8))},
 				{36, new NoDataMapper(250)}, // minecraft:piston_extension		=> MovingBlock
 				{43, new Mapper(43, (i, b) => (byte) (b == 6 ? 7 : b == 7 ? 6 : b))}, // Fence		=> Fence
 				{44, new Mapper(44, (i, b) => (byte) (b == 6 ? 7 : b == 7 ? 6 : b == 14 ? 15 : b == 15 ? 14 : b))}, // Fence		=> Fence
@@ -323,6 +324,8 @@ namespace MiNET.Worlds
 
 		public void ClearCachedChunks()
 		{
+			foreach(var chunk in _chunkCache)
+				chunk.Value.Dispose();
 			_chunkCache.Clear();
 		}
 
@@ -665,7 +668,22 @@ namespace MiNET.Worlds
 
 						if (blockId == 17 && metadata > 11) { blockId = 467; metadata -= 12; }
 
+						//	Console.WriteLine(metadata);
+
 						int runtimeId = (int) BlockFactory.GetRuntimeId(blockId, metadata);
+
+						if (blockId == 26)
+						{
+							Bed bed = new Bed();
+							bed.Direction = metadata;
+							if (metadata > 7)
+								bed.Direction &= 0x7;
+							else
+								bed.HeadPieceBit = false;
+							int r = bed.GetRuntimeId();
+							if(r != -1) runtimeId = r;
+						}
+
 						subChunk.SetBlockByRuntimeId(x, y, z, runtimeId);
 						if (ReadBlockLight)
 						{

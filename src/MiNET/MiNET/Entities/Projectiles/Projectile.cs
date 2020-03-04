@@ -48,6 +48,7 @@ namespace MiNET.Entities.Projectiles
 		public float HitBoxPrecision { get; set; } = 0.3f;
 		public Vector3 Force { get; set; } = new Vector3();
 
+		public float Knockback { get; set; } = 0.6f;
 		public bool Collided { get; set; } = false;
 
 		public bool BroadcastMovement { get; set; } = false;
@@ -97,7 +98,7 @@ namespace MiNET.Entities.Projectiles
 		{
 			//base.OnTick();
 
-			if (KnownPosition.Y <= -16
+			if (KnownPosition.Y <= 0
 				|| (Velocity.Length() <= 0 && DespawnOnImpact)
 				|| (Velocity.Length() <= 0 && !DespawnOnImpact && Ttl <= 0))
 			{

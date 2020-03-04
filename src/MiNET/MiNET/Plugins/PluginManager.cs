@@ -1023,7 +1023,7 @@ namespace MiNET.Plugins
 			}
 			catch (Exception e)
 			{
-				if (Log.IsDebugEnabled) Log.Error("Trying to execute command overload", e);
+				//if (Log.IsDebugEnabled) Log.Error("Trying to execute command overload", e);
 
 				return false;
 			}

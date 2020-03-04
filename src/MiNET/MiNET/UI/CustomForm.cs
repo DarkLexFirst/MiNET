@@ -58,7 +58,7 @@ namespace MiNET.UI
 				return; // Pressed [x]
 			}
 
-			for (var i = 0; i < Content.Count; i++)
+			for (var i = 0; i < Math.Min(Content.Count, parsedResult.Count); i++)
 			{
 				var element = Content[i];
 				if (element is Input) ((Input) element).Value = (string) parsedResult[i];

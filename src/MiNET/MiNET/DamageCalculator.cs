@@ -1,4 +1,4 @@
-#region LICENSE
+﻿#region LICENSE
 
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
@@ -345,8 +345,8 @@ namespace MiNET
 							break;
 						case EnchantingType.Lure:
 							break;
-						default:
-							throw new ArgumentOutOfRangeException();
+						//default:
+						//	throw new ArgumentOutOfRangeException();
 					}
 
 					reduction += enchanting.Level * typeModifier;

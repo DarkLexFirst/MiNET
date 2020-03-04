@@ -1,4 +1,5 @@
 ﻿using System;
+using Newtonsoft.Json;
 
 namespace MiNET.Utils.Skins
 {
@@ -11,6 +12,7 @@ namespace MiNET.Utils.Skins
 
 	public class Animation : ICloneable
 	{
+		[JsonIgnore]
 		public byte[] Image { get; set; }
 		public int ImageWidth { get; set; }
 		public int ImageHeight { get; set; }

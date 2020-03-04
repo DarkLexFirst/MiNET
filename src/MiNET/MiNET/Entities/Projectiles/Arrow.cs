@@ -42,6 +42,7 @@ namespace MiNET.Entities.Projectiles
 			Gravity = 0.05;
 			Drag = 0.01;
 
+			Knockback = 1.2f;
 			//OK: Drag = 0.0083;
 
 			HealthManager.IsInvulnerable = true;

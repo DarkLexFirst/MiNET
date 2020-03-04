@@ -50,11 +50,11 @@ namespace MiNET.ServiceKiller
 
 		private const int TimeBetweenSpawns = 0;
 		private static readonly TimeSpan DurationOfConnection = TimeSpan.FromSeconds(900);
-		private const int NumberOfBots = 400;
+		private const int NumberOfBots = 1000;
 		private const int RanSleepMin = 40;
 		private const int RanSleepMax = 100;
 		private const int RequestChunkRadius = 5;
-		private const bool ConcurrentSpawn = false;
+		private const bool ConcurrentSpawn = true;
 
 		public AutoResetEvent ConcurrentSpawnWaitHandle = new AutoResetEvent(false);
 
@@ -99,8 +99,8 @@ namespace MiNET.ServiceKiller
 				var emulator = new Emulator {Running = true};
 				long start = DateTime.UtcNow.Ticks;
 
-				//IPEndPoint endPoint = new IPEndPoint(Dns.GetHostEntry("yodamine.com").AddressList[0], 19132);
-				var endPoint = new IPEndPoint(IPAddress.Loopback, 19132);
+				//IPEndPoint endPoint = new IPEndPoint(Dns.GetHostEntry("cristalix.pe").AddressList[0], 19135);
+				var endPoint = new IPEndPoint(IPAddress.Loopback, 19135);
 
 				Task.Run(() =>
 				{

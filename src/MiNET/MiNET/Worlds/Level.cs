@@ -1186,7 +1186,7 @@ namespace MiNET.Worlds
 			return chunk;
 		}
 
-		public void SetBlock(Block block, bool broadcast = true, bool applyPhysics = true, bool calculateLight = true, ChunkColumn possibleChunk = null)
+		public void SetBlock(Block block, bool broadcast = true, bool applyPhysics = true, bool calculateLight = false, ChunkColumn possibleChunk = null)
 		{
 			if (block.Coordinates.Y < 0) return;
 
@@ -1280,16 +1280,16 @@ namespace MiNET.Worlds
 			chunk?.SetSkyLight(coordinates.X & 0x0f, coordinates.Y & 0xff, coordinates.Z & 0x0f, skyLight);
 		}
 
-		public void SetAir(BlockCoordinates blockCoordinates, bool broadcast = true)
+		public void SetAir(BlockCoordinates blockCoordinates, bool broadcast = true, bool applyPhysics = true, bool calculateLight = false)
 		{
-			SetAir(blockCoordinates.X, blockCoordinates.Y, blockCoordinates.Z, broadcast);
+			SetAir(blockCoordinates.X, blockCoordinates.Y, blockCoordinates.Z, broadcast, applyPhysics, calculateLight);
 		}
 
-		public void SetAir(int x, int y, int z, bool broadcast = true)
+		public void SetAir(int x, int y, int z, bool broadcast = true, bool applyPhysics = true, bool calculateLight = false)
 		{
 			Block air = BlockFactory.GetBlockById(0);
 			air.Coordinates = new BlockCoordinates(x, y, z);
-			SetBlock(air, broadcast);
+			SetBlock(air, broadcast, applyPhysics, calculateLight);
 		}
 
 		public BlockEntity GetBlockEntity(BlockCoordinates blockCoordinates)
@@ -1438,7 +1438,7 @@ namespace MiNET.Worlds
 			{
 				// Revert
 
-				RevertBlockAction(player, block, blockEntity);
+				RevertBlockAction(player, GetBlock(blockCoordinates), blockEntity);
 				return false;
 			}
 			else

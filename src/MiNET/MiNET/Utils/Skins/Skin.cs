@@ -42,12 +42,16 @@ namespace MiNET.Utils.Skins
 
 		public Cape Cape { get; set; }
 		public string SkinId { get; set; }
+		[JsonIgnore]
 		public string ResourcePatch { get; set; }  // contains GeometryName
 		public int Height { get; set; }
 		public int Width { get; set; }
+		[JsonIgnore]
 		public byte[] Data { get; set; }
 		public string GeometryName { get; set; }
+		[JsonIgnore]
 		public string GeometryData { get; set; }
+		[JsonIgnore]
 		public string AnimationData { get; set; }
 		public List<Animation> Animations { get; set; }
 
@@ -63,7 +67,7 @@ namespace MiNET.Utils.Skins
 
 			var size = bitmap.Height * bitmap.Width * 4;
 
-			if (size != 0x2000 && size != 0x4000 && size != 0x10000) return null;
+			//if (size != 0x2000 && size != 0x4000 && size != 0x10000) return null;
 
 			byte[] bytes = new byte[size];
 
@@ -90,6 +94,11 @@ namespace MiNET.Utils.Skins
 			int width = size == 0x10000 ? 128 : 64;
 			var height = size == 0x2000 ? 32 : (size == 0x4000 ? 64 : 128);
 
+			SaveTextureToFile(filename, bytes, width, height);
+		}
+
+		public static void SaveTextureToFile(string filename, byte[] bytes, int width, int height)
+		{
 			Bitmap bitmap = new Bitmap(width, height);
 
 			int i = 0;
@@ -139,6 +148,84 @@ namespace MiNET.Utils.Skins
 			settings.Converters.Add(new StringEnumConverter {CamelCaseText = true});
 
 			return JsonConvert.SerializeObject(geometryModel, settings);
+		}
+
+		public string ToJson()
+		{
+			var settings = new JsonSerializerSettings();
+			settings.NullValueHandling = NullValueHandling.Ignore;
+			settings.DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate;
+			settings.MissingMemberHandling = MissingMemberHandling.Error;
+			//settings.Formatting = Formatting.Indented;
+			settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+			settings.Converters.Add(new StringEnumConverter { CamelCaseText = true });
+
+			return JsonConvert.SerializeObject(this, settings);
+		}
+
+		public static Skin FromJson(string json)
+		{
+			var settings = new JsonSerializerSettings();
+			settings.NullValueHandling = NullValueHandling.Ignore;
+			settings.DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate;
+			settings.MissingMemberHandling = MissingMemberHandling.Error;
+			settings.Formatting = Formatting.Indented;
+			settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+
+			return JsonConvert.DeserializeObject<Skin>(json, settings);
+		}
+
+		public void SaveToDirectory(string path)
+		{
+			Directory.CreateDirectory(path);
+			File.WriteAllText(Path.Combine(path, "skin.json"), ToJson());
+			File.WriteAllText(Path.Combine(path, "geometry_data.json"), GeometryData);
+
+			if (!string.IsNullOrEmpty(ResourcePatch))
+				File.WriteAllText(Path.Combine(path, "resource_patch.json"), ResourcePatch);
+			if (!string.IsNullOrEmpty(AnimationData))
+				File.WriteAllText(Path.Combine(path, "animations_data.json"), AnimationData);
+
+			SaveTextureToFile(Path.Combine(path, "skin.png"), Data, Width, Height);
+
+			if (Animations.Count > 0)
+			{
+				string animationsPath = Path.Combine(path, "animations");
+				Directory.CreateDirectory(animationsPath);
+
+				foreach(var animation in Animations)
+				{
+					SaveTextureToFile(Path.Combine(animationsPath, $"{animation.Type}.png"), animation.Image, animation.ImageWidth, animation.ImageHeight);
+				}
+			}
+		}
+
+		public static Skin LoadFromDirectory(string path)
+		{
+			Skin skin = FromJson(File.ReadAllText(Path.Combine(path, "skin.json")));
+			skin.GeometryData = File.ReadAllText(Path.Combine(path, "geometry_data.json"));
+
+			string resourcePatchPath = Path.Combine(path, "resource_patch.json");
+			if (File.Exists(resourcePatchPath))
+				skin.ResourcePatch = File.ReadAllText(resourcePatchPath);
+			string animationsDataPath = Path.Combine(path, "animations_data.json");
+			if (File.Exists(animationsDataPath))
+				skin.AnimationData = File.ReadAllText(animationsDataPath);
+
+			skin.Data = GetTextureFromFile(Path.Combine(path, "skin.png"));
+
+			if (skin.Animations.Count > 0)
+			{
+				string animationsPath = Path.Combine(path, "animations");
+				Directory.CreateDirectory(animationsPath);
+
+				foreach (var animation in skin.Animations)
+				{
+					animation.Image = GetTextureFromFile(Path.Combine(animationsPath, $"{animation.Type}.png"));
+				}
+			}
+
+			return skin;
 		}
 
 		public object Clone()

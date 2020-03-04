@@ -156,7 +156,7 @@ namespace MiNET.Client
 
 		public override void HandleMcpeInventorySlot(McpeInventorySlot message)
 		{
-			Log.Debug($"Inventory slot: {message.item}");
+			Console.WriteLine($"Inventory slot: {message.item}");
 		}
 
 		public override void HandleMcpePlayerHotbar(McpePlayerHotbar message)
@@ -168,7 +168,7 @@ namespace MiNET.Client
 		{
 			CallPacketHandlers(message);
 
-			Log.Debug($"Set container content on Window ID: 0x{message.inventoryId:x2}, Count: {message.input.Count}");
+			Console.WriteLine($"Set container content on Window ID: 0x{message.inventoryId:x2}, Count: {message.input.Count}");
 
 			if (Client.IsEmulator) return;
 
@@ -194,8 +194,42 @@ namespace MiNET.Client
 
 		public override void HandleMcpeUpdateBlock(McpeUpdateBlock message)
 		{
-			Console.WriteLine(message.blockRuntimeId);
+			//Console.WriteLine(message.blockRuntimeId);
 			CallPacketHandlers(message);
+		}
+
+		public override void HandleMcpeSpawnParticleEffect(McpeSpawnParticleEffect message)
+		{
+			Console.WriteLine(message.dimensionId);
+			Console.WriteLine(message.entityId);
+			Console.WriteLine(message.position);
+			Console.WriteLine(message.particleName);
+			Console.WriteLine();
+			base.HandleMcpeSpawnParticleEffect(message);
+		}
+
+		public override void HandleMcpeMobArmorEquipment(McpeMobArmorEquipment message)
+		{
+			Console.WriteLine(message.helmet);
+			Console.WriteLine(message.chestplate);
+			Console.WriteLine(message.leggings);
+			Console.WriteLine(message.boots);
+			Console.WriteLine(message.runtimeEntityId);
+		}
+
+		public override void HandleMcpeHurtArmor(McpeHurtArmor message)
+		{
+			Console.WriteLine("armor2");
+		}
+
+		public override void HandleMcpeMobEquipment(McpeMobEquipment message)
+		{
+			Console.WriteLine("Equipment");
+		}
+
+		public override void HandleMcpeUpdateEquipment(McpeUpdateEquipment message)
+		{
+			Console.WriteLine("Equipment2");
 		}
 
 		public override void HandleMcpeStartGame(McpeStartGame message)
@@ -647,8 +681,9 @@ namespace MiNET.Client
 			{
 				int blockId = data & 0xff;
 				int metadata = data >> 12;
-				Log.Debug($"BlockID={blockId}, Metadata={metadata}");
 			}
+			Console.WriteLine($"data={data}, eventId={message.eventId}, position={message.position}");
+			Console.WriteLine();
 		}
 
 		public override void HandleMcpeUpdateAttributes(McpeUpdateAttributes message)

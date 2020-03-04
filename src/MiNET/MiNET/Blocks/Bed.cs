@@ -113,7 +113,7 @@ namespace MiNET.Blocks
 			level.RemoveBlockEntity(other);
 		}
 
-		private BlockCoordinates GetOtherPart()
+		public BlockCoordinates GetOtherPart()
 		{
 			var direction = Direction switch
 			{

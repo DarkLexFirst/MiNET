@@ -176,6 +176,12 @@ namespace MiNET
 
 		public virtual void HandleMcpePlayerSkin(McpePlayerSkin message)
 		{
+			if (message.uuid != ClientUuid) return;
+			Skin = message.skin;
+			McpePlayerSkin updateSkin = McpePlayerSkin.CreateObject();
+			updateSkin.uuid = ClientUuid;
+			updateSkin.skin = Skin;
+			Level.RelayBroadcast(updateSkin);
 		}
 
 		public virtual void HandleMcpePhotoTransfer(McpePhotoTransfer message)
@@ -813,7 +819,7 @@ namespace MiNET
 			SendAdventureSettings();
 		}
 
-		public bool IsAutoJump { get; set; }
+		public bool IsAutoJump { get; set; } = true;
 
 		[Wired]
 		public void SetAutoJump(bool isAutoJump)
@@ -1727,9 +1733,7 @@ namespace MiNET
 
 		public virtual void SendCraftingRecipes()
 		{
-			McpeCraftingData craftingData = McpeCraftingData.CreateObject();
-			craftingData.recipes = RecipeManager.Recipes;
-			SendPacket(craftingData);
+			SendPacket(RecipeManager.GetCraftingData());
 		}
 
 		public virtual void SendCreativeInventory()
@@ -2219,7 +2223,9 @@ namespace MiNET
 
 				damage += DamageCalculator.CalculateDamageIncreaseFromEnchantments(this, itemInHand, player);
 				var reducedDamage = (int) DamageCalculator.CalculatePlayerDamage(this, player, itemInHand, damage, DamageCause.EntityAttack);
-				player.HealthManager.TakeHit(this, itemInHand, reducedDamage, DamageCause.EntityAttack);
+				
+				if (!player.HealthManager.TakeHit(this, itemInHand, reducedDamage, DamageCause.EntityAttack)) return;
+
 				if (reducedDamage < damage)
 				{
 					player.Inventory.DamageArmor();
@@ -2573,7 +2579,14 @@ namespace MiNET
 		{
 			transactionRecords?.Remove(record);
 			if (record.InventoryId == 0x7c)
+			{
+				McpeInventoryContent packet = McpeInventoryContent.CreateObject();
+				packet.inventoryId = 0x7c;
+				packet.input = new ItemStacks();
+				packet.input.AddRange(Inventory.CursorInventory.Slots);
+				SendPacket(packet);
 				return; // bag with cursor slot replacing
+			}
 			switch (record.InventoryId)
 			{
 				case 0:
@@ -3015,6 +3028,7 @@ namespace MiNET
 				SendNetworkChunkPublisherUpdate();
 
 				Level.GetChunks(_currentChunkPosition, _chunksUsed, _chunksToLoad, ChunkRadius);
+				ChunkLoadProcessiong();
 				//int packetCount = 0;
 				//foreach (McpeWrapper chunk in Level.GenerateChunks(_currentChunkPosition, _chunksUsed, ChunkRadius))
 				//{
@@ -3060,6 +3074,7 @@ namespace MiNET
 				SendNetworkChunkPublisherUpdate();
 
 				Level.GetChunks(_currentChunkPosition, _chunksUsed, _chunksToLoad, ChunkRadius);
+				ChunkLoadProcessiong();
 
 				//foreach (McpeWrapper chunk in Level.GenerateChunks(_currentChunkPosition, _chunksUsed, ChunkRadius))
 				//{
@@ -3091,7 +3106,7 @@ namespace MiNET
 		}
 
 		private List<ChunkCoordinates> _chunksToLoad = new List<ChunkCoordinates>();
-		private const int chunksPerTick = 1;
+		private const int chunksPerTick = 6;
 
 		private void ChunkLoadProcessiong()
 		{

@@ -25,6 +25,7 @@
 
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using log4net;
@@ -90,7 +91,13 @@ namespace MiNET.Blocks
 			for (int i = 0; i < palletSize; i++)
 			{
 				if (BlockPalette[i].Data > 15) continue; // TODO: figure out why palette contains blocks with meta more than 15
-				if (BlockPalette[i].Data == -1) BlockPalette[i].Data = 0; // These are blockstates that does not have a metadata mapping
+				if (BlockPalette[i].Data == -1) // These are blockstates that does not have a metadata mapping
+				{
+					if (BlockPalette.Count(p => p.Id == BlockPalette[i].Id) == 1)
+						BlockPalette[i].Data = 0;
+					else
+						continue;
+				}
 				LegacyToRuntimeId[(BlockPalette[i].Id << 4) | (byte) BlockPalette[i].Data] = i;
 			}
 

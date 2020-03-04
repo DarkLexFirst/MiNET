@@ -71,6 +71,7 @@ namespace MiNET
 		public virtual void Move(double distance)
 		{
 			if (distance < 0) throw new Exception("Distance: " + distance);
+			if(distance > 1) return;
 			// 0.01 per meter for walking
 			// 0.005 for sneaking
 			// 0.1 for sprinting
@@ -243,7 +244,7 @@ namespace MiNET
 		public virtual void ResetHunger()
 		{
 			Hunger = MaxHunger;
-			Saturation = MaxHunger;
+			Saturation = 12;
 			Exhaustion = 0;
 		}
 	}

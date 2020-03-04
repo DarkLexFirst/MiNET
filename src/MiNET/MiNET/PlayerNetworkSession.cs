@@ -654,6 +654,11 @@ namespace MiNET
 				handler.HandleMcpeSetEntityMotion((McpeSetEntityMotion) message);
 			}
 
+			else if (typeof(McpePlayerSkin) == message.GetType())
+			{
+				handler.HandleMcpePlayerSkin((McpePlayerSkin) message);
+			}
+
 			else if (typeof(McpePhotoTransfer) == message.GetType())
 			{
 				handler.HandleMcpePhotoTransfer((McpePhotoTransfer) message);

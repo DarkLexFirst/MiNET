@@ -1,6 +1,6 @@
 ﻿namespace MiNET
 {
-	public enum BlockColors
+	public enum BlockColor
 	{
 		white,
 		orange,

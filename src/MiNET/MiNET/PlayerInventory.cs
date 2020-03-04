@@ -26,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using fNbt;
 using log4net;
 using MiNET.Blocks;
 using MiNET.Entities;
@@ -104,16 +105,17 @@ namespace MiNET
 		{
 			if (Player.GameMode != GameMode.Survival) return;
 
-			Helmet = DamageArmorItem(Helmet);
-			Chest = DamageArmorItem(Chest);
-			Leggings = DamageArmorItem(Leggings);
-			Boots = DamageArmorItem(Boots);
-			Player.SendEquipmentForPlayer();
+			Helmet = DamageArmorItem(Helmet, 0);
+			Chest = DamageArmorItem(Chest, 1);
+			Leggings = DamageArmorItem(Leggings, 2);
+			Boots = DamageArmorItem(Boots, 3);
+			Player.SendArmorForPlayer();
 		}
 
-		public virtual Item DamageArmorItem(Item item)
+		public virtual Item DamageArmorItem(Item item, int slot)
 		{
 			if (Player.GameMode != GameMode.Survival) return item;
+			if(item.ItemType < ItemType.Helmet) return item;
 
 			var unbreakingLevel = item.GetEnchantingLevel(EnchantingType.Unbreaking);
 			if (unbreakingLevel > 0)
@@ -121,9 +123,19 @@ namespace MiNET
 				if (new Random().Next(1 + unbreakingLevel) != 0) return item;
 			}
 
-			item.Metadata++;
+			int damage = 1;
 
-			if (item.Metadata >= item.Durability)
+			if (item.ExtraData == null)
+				item.ExtraData = new NbtCompound();
+			if (!item.ExtraData.Contains("Damage"))
+				item.ExtraData.Add(new NbtInt("Damage", 1));
+			else
+			{
+				damage = item.ExtraData["Damage"].IntValue;
+				item.ExtraData["Damage"] = new NbtInt("Damage", damage + 1);
+			}
+
+			if (damage >= item.GetArmorDurability())
 			{
 				item = new ItemAir();
 
@@ -134,6 +146,7 @@ namespace MiNET
 				sound.position = Player.KnownPosition;
 				Player.Level.RelayBroadcast(sound);
 			}
+			Player.SendSetSlot(item, slot, 0x78);
 
 			return item;
 		}
