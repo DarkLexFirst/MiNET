@@ -24,6 +24,7 @@
 #endregion
 
 using System;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -495,12 +496,12 @@ namespace MiNET
 
 		public virtual void HandleMcpeSetEntityMotion(McpeSetEntityMotion message)
 		{
-			Level.RelayBroadcast((McpeSetEntityMotion) message.Clone());
+			//Level.RelayBroadcast((McpeSetEntityMotion) message.Clone());
 		}
 
 		public void HandleMcpeMoveEntity(McpeMoveEntity message)
 		{
-			Level.RelayBroadcast((McpeMoveEntity) message.Clone());
+			//Level.RelayBroadcast((McpeMoveEntity) message.Clone());
 			if (Level.TryGetEntity(message.runtimeEntityId, out Entity entity))
 			{
 				entity.KnownPosition = message.position;
@@ -778,7 +779,7 @@ namespace MiNET
 			mcpeAdventureSettings.actionPermissions = (uint) ActionPermissions;
 			mcpeAdventureSettings.permissionLevel = (uint) PermissionLevel;
 			mcpeAdventureSettings.customStoredPermissions = (uint) 0;
-			mcpeAdventureSettings.userId = Endian.SwapInt64(EntityId);
+			mcpeAdventureSettings.userId = BinaryPrimitives.ReverseEndianness(EntityId);
 
 			SendPacket(mcpeAdventureSettings);
 		}
