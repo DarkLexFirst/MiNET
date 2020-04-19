@@ -529,6 +529,8 @@ namespace MiNET.Net
 					break;
 			}
 
+			if (!_reader.Eof) ReadBool(); // damn BS
+
 			return records;
 		}
 
@@ -1541,6 +1543,27 @@ namespace MiNET.Net
 			Write(skin.Cape.OnClassicSkin);
 			Write(skin.Cape.Id);
 			Write(skin.SkinId + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()); // some unique skin id
+			Write(skin.ArmSize);
+			Write(skin.SkinColor);
+			Write(skin.PersonaPieces.Count);
+			foreach (PersonaPiece piece in skin.PersonaPieces)
+			{
+				Write(piece.PieceId);
+				Write(piece.PieceType);
+				Write(piece.PackId);
+				Write(piece.IsDefaultPiece);
+				Write(piece.ProductId);
+			}
+			Write(skin.SkinPieces.Count);
+			foreach (SkinPiece skinPiece in skin.SkinPieces)
+			{
+				Write(skinPiece.PieceType);
+				Write(skinPiece.Colors.Count);
+				foreach (string color in skinPiece.Colors)
+				{
+					Write(color);
+				}
+			}
 		}
 
 		public Skin ReadSkin()
@@ -1577,7 +1600,33 @@ namespace MiNET.Net
 			skin.IsPersonaSkin = ReadBool();
 			skin.Cape.OnClassicSkin = ReadBool();
 			skin.Cape.Id = ReadString();
-			ReadString(); // some unique skin id
+			ReadString(); // fullSkinId
+			skin.ArmSize = ReadString();
+			skin.SkinColor = ReadString();
+			int personaPieceCount = ReadInt();
+			for (int i = 0; i < personaPieceCount; i++)
+			{
+				var p = new PersonaPiece();
+				p.PieceId = ReadString();
+				p.PieceType = ReadString();
+				p.PackId = ReadString();
+				p.IsDefaultPiece = ReadBool();
+				p.ProductId = ReadString();
+				skin.PersonaPieces.Add(p);
+			}
+
+			int skinPieceCount = ReadInt();
+			for (int i = 0; i < skinPieceCount; i++)
+			{
+				var piece = new SkinPiece();
+				piece.PieceType = ReadString();
+				int colorAmount = ReadInt();
+				for (int i2 = 0; i2 < colorAmount; i2++)
+				{
+					piece.Colors.Add(ReadString());
+				}
+				skin.SkinPieces.Add(piece);
+			}
 
 			//Log.Debug($"SkinId={skin.SkinId}");
 			//Log.Debug($"SkinData lenght={skin.Data.Length}");

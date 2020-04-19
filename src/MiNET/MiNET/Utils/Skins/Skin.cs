@@ -69,7 +69,7 @@ namespace MiNET.Utils.Skins
 		public bool IsPersonaSkin { get; set; }
 		public bool IsPremiumSkin { get; set; }
 
-		public Cape Cape { get; set; }
+		public Cape Cape { get; set; } = new Cape();
 		public string SkinId { get; set; }
 		[JsonIgnore]
 		public string ResourcePatch { get; set; }  // contains GeometryName
@@ -87,15 +87,17 @@ namespace MiNET.Utils.Skins
 		public string GeometryName { get; set; }
 		[JsonIgnore]
 		public string GeometryData { get; set; }
+
+		public string ArmSize { get; set; }
+
+		public string SkinColor { get; set; }
+
 		[JsonIgnore]
 		public string AnimationData { get; set; }
-		public List<Animation> Animations { get; set; }
+		public List<Animation> Animations { get; set; } = new List<Animation>();
 
-		public Skin()
-		{
-			Cape = new Cape();
-			Animations = new List<Animation>();
-		}
+		public List<PersonaPiece> PersonaPieces { get; set; } = new List<PersonaPiece>();
+		public List<SkinPiece> SkinPieces { get; set; } = new List<SkinPiece>();
 
 		public static byte[] GetTextureFromFile(string filename)
 		{
