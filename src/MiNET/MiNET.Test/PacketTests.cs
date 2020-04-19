@@ -26,9 +26,11 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using log4net.Core;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MiNET.Net;
 using MiNET.Test.Streaming;
+using MiNET.Worlds;
 
 namespace MiNET.Test
 {
@@ -43,7 +45,7 @@ namespace MiNET.Test
 			var bytes = input.Encode();
 
 			var packet = new McpePlayStatus();
-			packet.Decode(bytes.AsSpan(1, bytes.Length - 1).ToArray());
+			packet.Decode(bytes.AsMemory());
 
 			Assert.AreEqual(10, packet.status);
 		}
@@ -129,5 +131,69 @@ namespace MiNET.Test
 
 			Console.WriteLine($"test {j}, {watch.ElapsedMilliseconds:N}ms");
 		}
+
+		[TestMethod]
+		public void McpeFullChunk_worst_case_encode_test()
+		{
+			int numberOfSubChunks = 16;
+			var column = new ChunkColumn();
+			column.DisableCache = true;
+			int block = 0;
+			var watch = Stopwatch.StartNew();
+			for (int x = 0; x < 16; x++)
+			{
+				for (int z = 0; z < 16; z++)
+				{
+					for (int y = 0; y < numberOfSubChunks * 16; y++)
+					{
+						column.SetBlockByRuntimeId(x, y, z, block++);
+					}
+				}
+			}
+			foreach (SubChunk subChunk in column)
+			{
+				subChunk.DisableCache = true;
+			}
+
+			Console.WriteLine($"Setup chunks: {watch.ElapsedMilliseconds}ms");
+
+
+			// 319761
+			int topEmpty = column.GetTopEmpty();
+			Console.WriteLine($"Top {topEmpty}");
+
+			var bytes = column.GetBytes(topEmpty);
+			Console.WriteLine($"Bytes: Size={bytes.Length} bytes");
+			//Assert.AreEqual(319761, bytes.Length);
+
+			// warmup
+			for (int i = 0; i < 100; i++)
+			{
+				column.GetBytes(topEmpty);
+				column.GetBatch();
+			}
+
+			double count = 1500;
+
+			watch.Restart();
+			for (int i = 0; i < count; i++)
+			{
+				column.GetBytes(topEmpty);
+			}
+			Console.WriteLine($"Bytes: Avg {watch.ElapsedTicks / count:F0} ticks");
+
+			var packet = column.GetBatch();
+			Console.WriteLine($"Batch: Size={packet.payload.Length} bytes");
+
+			watch.Restart();
+			for (int i = 0; i < count; i++)
+			{
+				column.GetBatch();
+			}
+
+			Console.WriteLine($"Batch: Avg {watch.ElapsedTicks / count:F0} ticks");
+
+		}
+
 	}
 }

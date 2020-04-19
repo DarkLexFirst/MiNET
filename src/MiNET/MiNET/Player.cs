@@ -43,6 +43,7 @@ using MiNET.Entities.Passive;
 using MiNET.Entities.World;
 using MiNET.Items;
 using MiNET.Net;
+using MiNET.Net.RakNet;
 using MiNET.Particles;
 using MiNET.UI;
 using MiNET.Utils;
@@ -131,7 +132,7 @@ namespace MiNET
 		{
 			// Beware that message might be null here.
 
-			var serverInfo = Server.ServerInfo;
+			var serverInfo = Server.ConnectionInfo;
 			Interlocked.Increment(ref serverInfo.ConnectionsInConnectPhase);
 
 			SendPlayerStatus(0);
@@ -850,7 +851,7 @@ namespace MiNET
 			Stopwatch watch = new Stopwatch();
 			watch.Restart();
 
-			var serverInfo = Server.ServerInfo;
+			var serverInfo = Server.ConnectionInfo;
 
 			try
 			{
@@ -1664,7 +1665,7 @@ namespace MiNET
 
 		protected virtual void SendChangeDimension(Dimension dimension, bool respawn = false, Vector3 position = new Vector3())
 		{
-			McpeChangeDimension changeDimension = McpeChangeDimension.CreateObject();
+			var changeDimension = McpeChangeDimension.CreateObject();
 			changeDimension.dimension = (int) dimension;
 			changeDimension.position = position;
 			changeDimension.respawn = respawn;
@@ -1677,7 +1678,6 @@ namespace MiNET
 			McpeSetEntityData mcpeSetEntityData = McpeSetEntityData.CreateObject();
 			mcpeSetEntityData.runtimeEntityId = EntityManager.EntityIdSelf;
 			mcpeSetEntityData.metadata = metadata;
-			mcpeSetEntityData.Encode();
 			SendPacket(mcpeSetEntityData);
 
 			base.BroadcastSetEntityData(metadata);
@@ -1688,7 +1688,6 @@ namespace MiNET
 			McpeSetEntityData mcpeSetEntityData = McpeSetEntityData.CreateObject();
 			mcpeSetEntityData.runtimeEntityId = EntityManager.EntityIdSelf;
 			mcpeSetEntityData.metadata = GetMetadata();
-			mcpeSetEntityData.Encode();
 			SendPacket(mcpeSetEntityData);
 		}
 
@@ -1804,10 +1803,9 @@ namespace MiNET
 
 						if (sendDisconnect)
 						{
-							McpeDisconnect disconnect = McpeDisconnect.CreateObject();
-							disconnect.NoBatch = true;
+							var disconnect = McpeDisconnect.CreateObject();
 							disconnect.message = reason;
-							NetworkHandler.SendDirectPacket(disconnect);
+							NetworkHandler.SendPacket(disconnect);
 						}
 
 						NetworkHandler.Close();
@@ -1857,7 +1855,6 @@ namespace MiNET
 			Level.BroadcastMessage(text, sender: this);
 		}
 
-		private int _lastPlayerMoveSequenceNUmber;
 		private int _lastOrderingIndex;
 		private object _moveSyncLock = new object();
 
@@ -1869,23 +1866,12 @@ namespace MiNET
 			{
 				lock (_moveSyncLock)
 				{
-					if (_lastPlayerMoveSequenceNUmber > message.DatagramSequenceNumber)
-					{
-						return;
-					}
-
-					_lastPlayerMoveSequenceNUmber = message.DatagramSequenceNumber;
-
-					if (_lastOrderingIndex > message.OrderingIndex)
-					{
-						return;
-					}
-
-					_lastOrderingIndex = message.OrderingIndex;
+					if (_lastOrderingIndex > message.ReliabilityHeader.OrderingIndex) return;
+					_lastOrderingIndex = message.ReliabilityHeader.OrderingIndex;
 				}
 			}
 
-			Vector3 origin = KnownPosition.ToVector3();
+			var origin = KnownPosition.ToVector3();
 			double distanceTo = Vector3.Distance(origin, new Vector3(message.x, message.y - 1.62f, message.z));
 
 			CurrentSpeed = distanceTo / ((double) (DateTime.UtcNow - LastUpdatedTime).Ticks / TimeSpan.TicksPerSecond);
@@ -3439,16 +3425,16 @@ namespace MiNET
 			DisplayName = displayName;
 
 			{
-				McpePlayerList playerList = McpePlayerList.CreateObject();
+				var playerList = McpePlayerList.CreateObject();
 				playerList.records = new PlayerRemoveRecords {this};
-				Level.RelayBroadcast(Level.CreateMcpeBatch(playerList.Encode()));
+				Level.RelayBroadcast(Level.CreateMcpeBatch(playerList.Encode())); // Replace with records, to remove need for player and encode
 				playerList.records = null;
 				playerList.PutPool();
 			}
 			{
-				McpePlayerList playerList = McpePlayerList.CreateObject();
+				var playerList = McpePlayerList.CreateObject();
 				playerList.records = new PlayerAddRecords {this};
-				Level.RelayBroadcast(Level.CreateMcpeBatch(playerList.Encode()));
+				Level.RelayBroadcast(Level.CreateMcpeBatch(playerList.Encode())); // Replace with records, to remove need for player and encode
 				playerList.records = null;
 				playerList.PutPool();
 			}

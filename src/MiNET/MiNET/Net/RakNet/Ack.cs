@@ -3,10 +3,10 @@
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
 // compliance with the License. You may obtain a copy of the License at
-// https://github.com/NiclasOlofsson/MiNET/blob/master/LICENSE. 
-// The License is based on the Mozilla Public License Version 1.1, but Sections 14 
-// and 15 have been added to cover use of software over a computer network and 
-// provide for limited attribution for the Original Developer. In addition, Exhibit A has 
+// https://github.com/NiclasOlofsson/MiNET/blob/master/LICENSE.
+// The License is based on the Mozilla Public License Version 1.1, but Sections 14
+// and 15 have been added to cover use of software over a computer network and
+// provide for limited attribution for the Original Developer. In addition, Exhibit A has
 // been modified to be consistent with Exhibit B.
 // 
 // Software distributed under the License is distributed on an "AS IS" basis,
@@ -18,7 +18,7 @@
 // The Original Developer is the Initial Developer.  The Initial Developer of
 // the Original Code is Niclas Olofsson.
 // 
-// All portions of the code written by Niclas Olofsson are Copyright (c) 2014-2018 Niclas Olofsson. 
+// All portions of the code written by Niclas Olofsson are Copyright (c) 2014-2020 Niclas Olofsson.
 // All Rights Reserved.
 
 #endregion
@@ -27,7 +27,7 @@ using System;
 using System.Collections.Generic;
 using MiNET.Utils;
 
-namespace MiNET.Net
+namespace MiNET.Net.RakNet
 {
 	public class Acks : Packet<Acks>
 	{
@@ -128,7 +128,7 @@ namespace MiNET.Net
 
 	public class Ack : Packet<Ack>
 	{
-		public List<Tuple<int, int>> ranges = new List<Tuple<int, int>>();
+		public List<(int, int)> ranges = new List<(int, int)>();
 
 		public Ack()
 		{
@@ -139,7 +139,7 @@ namespace MiNET.Net
 		{
 			base.DecodePacket();
 
-			if (Id != 0xc0) throw new Exception("Not ACK");
+			//if (Id != 0xc0) throw new Exception("Not ACK");
 
 			ranges.Clear();
 
@@ -153,13 +153,13 @@ namespace MiNET.Net
 					int end = ReadLittle().IntValue();
 					if (end - start > 512) end = start + 512;
 
-					var range = new Tuple<int, int>(start, end);
+					var range = (start, end);
 					ranges.Add(range);
 				}
 				else
 				{
 					int seqNo = ReadLittle().IntValue();
-					var range = new Tuple<int, int>(seqNo, seqNo);
+					var range = (seqNo, seqNo);
 					ranges.Add(range);
 				}
 			}

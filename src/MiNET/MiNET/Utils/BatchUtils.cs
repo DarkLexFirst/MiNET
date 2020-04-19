@@ -27,6 +27,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using MiNET.Net;
+using MiNET.Net.RakNet;
 
 namespace MiNET.Utils
 {
@@ -52,7 +53,8 @@ namespace MiNET.Utils
 		public static McpeWrapper CreateBatchPacket(Memory<byte> input, CompressionLevel compressionLevel, bool writeLen)
 		{
 			var batch = McpeWrapper.CreateObject();
-			batch.payload = Compression.Compress(input, writeLen, compressionLevel);
+			batch.ReliabilityHeader.Reliability = Reliability.ReliableOrdered;
+			batch.payload = Compression.Compress(input, writeLen, input.Length > 1000 ? compressionLevel : CompressionLevel.NoCompression);
 			batch.Encode(); // prepare
 			return batch;
 		}

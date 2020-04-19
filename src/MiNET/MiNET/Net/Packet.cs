@@ -40,6 +40,7 @@ using log4net;
 using Microsoft.IO;
 using MiNET.Crafting;
 using MiNET.Items;
+using MiNET.Net.RakNet;
 using MiNET.Utils;
 using MiNET.Utils.Skins;
 using Newtonsoft.Json;
@@ -50,29 +51,22 @@ namespace MiNET.Net
 	{
 		private static readonly ILog Log = LogManager.GetLogger(typeof(Packet));
 
-		private bool _isEncoded;
 		private byte[] _encodedMessage;
 
-		[JsonIgnore] public int DatagramSequenceNumber;
-
-		[JsonIgnore] public bool NoBatch { get; set; }
-
-		[JsonIgnore] public Reliability Reliability = Reliability.Unreliable;
-		[JsonIgnore] public int ReliableMessageNumber;
-		[JsonIgnore] public byte OrderingChannel;
-		[JsonIgnore] public int OrderingIndex;
+		[JsonIgnore] public ReliabilityHeader ReliabilityHeader = new ReliabilityHeader();
 
 		[JsonIgnore] public bool ForceClear;
+		[JsonIgnore] public bool NoBatch { get; set; }
 
 		[JsonIgnore] public byte Id;
 		[JsonIgnore] public bool IsMcpe;
 
-		protected MemoryStream _buffer;
+		protected MemoryStreamReader _reader; // new construct for reading
+		protected private Stream _buffer;
 		private BinaryWriter _writer;
-		private BinaryReader _reader;
 
-		[JsonIgnore] public byte[] Bytes { get; private set; }
-		[JsonIgnore] public Stopwatch Timer { get; } = new Stopwatch();
+		[JsonIgnore] public ReadOnlyMemory<byte> Bytes { get; private set; }
+		[JsonIgnore] public Stopwatch Timer { get; } = Stopwatch.StartNew();
 
 		public Packet()
 		{
@@ -86,7 +80,7 @@ namespace MiNET.Net
 
 		public byte ReadByte()
 		{
-			return _reader.ReadByte();
+			return (byte) _reader.ReadByte();
 		}
 
 		public void Write(bool value)
@@ -101,12 +95,16 @@ namespace MiNET.Net
 
 		public void Write(Memory<byte> value)
 		{
+			Write((ReadOnlyMemory<byte>) value);
+		}
+
+		public void Write(ReadOnlyMemory<byte> value)
+		{
 			if (value.IsEmpty)
 			{
 				Log.Warn("Trying to write empty Memory<byte>");
 				return;
 			}
-
 			_writer.Write(value.Span);
 		}
 
@@ -121,18 +119,37 @@ namespace MiNET.Net
 			_writer.Write(value);
 		}
 
+		public ReadOnlyMemory<byte> Slice(int count)
+		{
+			return _reader.Read(count);
+		}
+
+		public ReadOnlyMemory<byte> ReadReadOnlyMemory(int count, bool slurp = false)
+		{
+			if (!slurp && count == 0) return Memory<byte>.Empty;
+
+			if (count == 0)
+			{
+				count = (int) (_reader.Length - _reader.Position);
+			}
+
+			ReadOnlyMemory<byte> readBytes = _reader.Read(count);
+			if (readBytes.Length != count) throw new ArgumentOutOfRangeException($"Expected {count} bytes, only read {readBytes.Length}.");
+			return readBytes;
+		}
+
 		public byte[] ReadBytes(int count, bool slurp = false)
 		{
 			if (!slurp && count == 0) return new byte[0];
 
 			if (count == 0)
 			{
-				count = (int) (_reader.BaseStream.Length - _reader.BaseStream.Position);
+				count = (int) (_reader.Length - _reader.Position);
 			}
 
-			var readBytes = _reader.ReadBytes(count);
+			ReadOnlyMemory<byte> readBytes = _reader.Read(count);
 			if (readBytes.Length != count) throw new ArgumentOutOfRangeException($"Expected {count} bytes, only read {readBytes.Length}.");
-			return readBytes;
+			return readBytes.ToArray(); //TODO: Replace with ReadOnlyMemory<byte> return
 		}
 
 		public void WriteByteArray(byte[] value)
@@ -165,7 +182,7 @@ namespace MiNET.Net
 
 		public short ReadShort(bool bigEndian = false)
 		{
-			if (_reader.BaseStream.Position == _reader.BaseStream.Length) return 0;
+			if (_reader.Position == _reader.Length) return 0;
 
 			if (bigEndian) return BinaryPrimitives.ReverseEndianness(_reader.ReadInt16());
 
@@ -180,7 +197,7 @@ namespace MiNET.Net
 
 		public ushort ReadUshort(bool bigEndian = false)
 		{
-			if (_reader.BaseStream.Position == _reader.BaseStream.Length) return 0;
+			if (_reader.Position == _reader.Length) return 0;
 
 			if (bigEndian) return BinaryPrimitives.ReverseEndianness(_reader.ReadUInt16());
 
@@ -194,7 +211,7 @@ namespace MiNET.Net
 
 		public short ReadShortBe()
 		{
-			if (_reader.BaseStream.Position == _reader.BaseStream.Length) return 0;
+			if (_reader.Position == _reader.Length) return 0;
 
 			return BinaryPrimitives.ReverseEndianness(_reader.ReadInt16());
 		}
@@ -206,7 +223,7 @@ namespace MiNET.Net
 
 		public Int24 ReadLittle()
 		{
-			return new Int24(_reader.ReadBytes(3));
+			return new Int24(_reader.Read(3).Span);
 		}
 
 		public void Write(int value, bool bigEndian = false)
@@ -250,7 +267,7 @@ namespace MiNET.Net
 
 		public int ReadVarInt()
 		{
-			return VarInt.ReadInt32(_buffer);
+			return VarInt.ReadInt32(_reader);
 		}
 
 		public void WriteSignedVarInt(int value)
@@ -260,7 +277,7 @@ namespace MiNET.Net
 
 		public int ReadSignedVarInt()
 		{
-			return VarInt.ReadSInt32(_buffer);
+			return VarInt.ReadSInt32(_reader);
 		}
 
 		public void WriteUnsignedVarInt(uint value)
@@ -270,12 +287,12 @@ namespace MiNET.Net
 
 		public uint ReadUnsignedVarInt()
 		{
-			return VarInt.ReadUInt32(_buffer);
+			return VarInt.ReadUInt32(_reader);
 		}
 
 		public int ReadLength()
 		{
-			return (int) VarInt.ReadUInt32(_buffer);
+			return (int) VarInt.ReadUInt32(_reader);
 		}
 
 		public void WriteLength(int value)
@@ -290,7 +307,7 @@ namespace MiNET.Net
 
 		public long ReadVarLong()
 		{
-			return VarInt.ReadInt64(_buffer);
+			return VarInt.ReadInt64(_reader);
 		}
 
 		public void WriteEntityId(long value)
@@ -305,7 +322,7 @@ namespace MiNET.Net
 
 		public long ReadSignedVarLong()
 		{
-			return VarInt.ReadSInt64(_buffer);
+			return VarInt.ReadSInt64(_reader);
 		}
 
 		public void WriteRuntimeEntityId(long value)
@@ -322,7 +339,7 @@ namespace MiNET.Net
 		public long ReadUnsignedVarLong()
 		{
 			// Need to fix this to ulong later
-			return (long) VarInt.ReadUInt64(_buffer);
+			return (long) VarInt.ReadUInt64(_reader);
 		}
 
 		public void Write(long value)
@@ -379,7 +396,7 @@ namespace MiNET.Net
 
 		public string ReadString()
 		{
-			if (_reader.BaseStream.Position == _reader.BaseStream.Length) return string.Empty;
+			if (_reader.Position == _reader.Length) return string.Empty;
 			int len = ReadLength();
 			if (len <= 0) return string.Empty;
 			return Encoding.UTF8.GetString(ReadBytes(len));
@@ -401,10 +418,10 @@ namespace MiNET.Net
 
 		public string ReadFixedString()
 		{
-			if (_reader.BaseStream.Position == _reader.BaseStream.Length) return string.Empty;
+			if (_reader.Position == _reader.Length) return string.Empty;
 			short len = ReadShort(true);
 			if (len <= 0) return string.Empty;
-			return Encoding.UTF8.GetString(ReadBytes(len));
+			return Encoding.UTF8.GetString(_reader.Read(len).Span);
 		}
 
 		public void Write(Vector2 vec)
@@ -628,7 +645,7 @@ namespace MiNET.Net
 
 		public IPEndPoint[] ReadIPEndPoints(int count)
 		{
-			if (count == 20 && _reader.BaseStream.Length < 120) count = 10;
+			if (count == 20 && _reader.Length < 120) count = 10;
 			var endPoints = new IPEndPoint[count];
 			for (int i = 0; i < endPoints.Length; i++)
 			{
@@ -668,7 +685,7 @@ namespace MiNET.Net
 
 		public Nbt ReadNbt()
 		{
-			return ReadNbt(_reader.BaseStream);
+			return ReadNbt(_reader);
 		}
 
 		public static Nbt ReadNbt(Stream stream)
@@ -1012,7 +1029,11 @@ namespace MiNET.Net
 
 		public MetadataDictionary ReadMetadataDictionary()
 		{
-			return MetadataDictionary.FromStream(_reader);
+			//_buffer.Position = _reader.Position;
+			var reader = new BinaryReader(_reader);
+			var dictionary = MetadataDictionary.FromStream(reader);
+			//_reader.Position = (int) _buffer.Position;
+			return dictionary;
 		}
 
 		public PlayerAttributes ReadPlayerAttributes()
@@ -1197,7 +1218,8 @@ namespace MiNET.Net
 			file.UseVarInt = true;
 			file.AllowAlternativeRootTag = true;
 			nbt.NbtFile = file;
-			file.LoadFromStream(_reader.BaseStream, NbtCompression.None);
+
+			file.LoadFromStream(_reader, NbtCompression.None);
 
 			int runtimeId = 0;
 			var rootTag = (NbtList) file.RootTag;
@@ -2228,25 +2250,19 @@ namespace MiNET.Net
 
 		public bool CanRead()
 		{
-			return _reader.BaseStream.Position < _reader.BaseStream.Length;
+			return _reader.Position < _reader.Length;
 		}
 
 		public void SetEncodedMessage(byte[] encodedMessage)
 		{
 			_encodedMessage = encodedMessage;
-			_isEncoded = true;
 		}
 
 		public virtual void Reset()
 		{
 			ResetPacket();
 
-			DatagramSequenceNumber = -1;
-
-			Reliability = Reliability.Unreliable;
-			ReliableMessageNumber = -1;
-			OrderingChannel = 0;
-			OrderingIndex = -1;
+			ReliabilityHeader = new ReliabilityHeader();
 
 			NoBatch = false;
 			ForceClear = false;
@@ -2254,7 +2270,6 @@ namespace MiNET.Net
 			_encodedMessage = null;
 			Bytes = null;
 			Timer.Restart();
-			_isEncoded = false;
 
 			_writer?.Close();
 			_reader?.Close();
@@ -2271,19 +2286,21 @@ namespace MiNET.Net
 		private object _encodeSync = new object();
 
 		private static RecyclableMemoryStreamManager _streamManager = new RecyclableMemoryStreamManager();
-		private static ConcurrentDictionary<Type, bool> _isLob = new ConcurrentDictionary<Type, bool>();
+		private static ConcurrentDictionary<int, bool> _isLob = new ConcurrentDictionary<int, bool>();
 
 		public virtual byte[] Encode()
 		{
+			byte[] cache = _encodedMessage;
+			if (cache != null) return cache;
+
 			lock (_encodeSync)
 			{
-				if (_isEncoded) return _encodedMessage;
-
-				_isEncoded = false;
+				// This construct to avoid unnecessary contention and double encoding.
+				if (_encodedMessage != null) return _encodedMessage;
 
 				// Dynamic pooling. If this packet has been registered as a large object in previous
 				// runs, we use the pooled stream for it instead to avoid LOB allocations
-				bool isLob = _isLob.ContainsKey(GetType());
+				bool isLob = _isLob.ContainsKey(Id);
 				_buffer = isLob ? _streamManager.GetStream() : new MemoryStream();
 				using (_writer = new BinaryWriter(_buffer, Encoding.UTF8, true))
 				{
@@ -2293,24 +2310,13 @@ namespace MiNET.Net
 					// This WILL allocate LOB. Need to convert this to work with array segment and pool it.
 					// then we will use GetBuffer instead.
 					// Also remember to move dispose entirely to Reset (dispose) when that happens.
-					_encodedMessage = _buffer.ToArray();
+					var buffer = (MemoryStream) _buffer;
+					_encodedMessage = buffer.ToArray();
 					if (!isLob && _encodedMessage.Length >= 85_000)
 					{
-						_isLob.TryAdd(GetType(), true);
+						_isLob.TryAdd(Id, true);
 						//Log.Warn($"LOB {GetType().Name} {_encodedMessage.Length}, IsLOB={_isLob}");
 					}
-					//else if (isLob && _encodedMessage.Length < 85_000)
-					//{
-					//	if (GetType() != typeof(McpeWrapper)) Log.Warn($"Marked as LOB {GetType().Name} but size was not LOB {_encodedMessage.Length}");
-					//}
-					_isEncoded = true;
-
-					//ResetPacket();
-
-					//_writer.Dispose();
-					//_buffer.Dispose();
-					//_writer = null;
-					//_buffer = null;
 				}
 				_buffer.Dispose();
 
@@ -2328,47 +2334,48 @@ namespace MiNET.Net
 			//if (IsMcpe) Write((short) 0);
 		}
 
-		public virtual void Decode(byte[] buffer)
+		[Obsolete("Use decode with ReadOnlyMemory<byte> instead.")]
+		public virtual Packet Decode(byte[] buffer)
+		{
+			return Decode(new ReadOnlyMemory<byte>(buffer));
+		}
+
+		public virtual Packet Decode(ReadOnlyMemory<byte> buffer)
 		{
 			Bytes = buffer;
-			_buffer = new MemoryStream(buffer, false);
-			_reader = new BinaryReader(_buffer, Encoding.UTF8, true);
+			_reader = new MemoryStreamReader(buffer);
 
 			DecodePacket();
 
-			if (Log.IsDebugEnabled && _buffer.Position != (buffer.Length))
+			if (Log.IsDebugEnabled && _reader.Position != (buffer.Length))
 			{
-				Log.Warn($"{GetType().Name}: Still have {buffer.Length - _buffer.Position} bytes to read!!\n{HexDump(buffer)}");
+				Log.Warn($"{GetType().Name}: Still have {buffer.Length - _reader.Position} bytes to read!!\n{HexDump(buffer.ToArray())}");
 			}
 
 			_reader.Dispose();
-			_buffer.Dispose();
 			_reader = null;
-			_buffer = null;
+
+			return this;
 		}
 
 		protected virtual void DecodePacket()
 		{
-			_buffer.Position = 0;
-			if (!IsMcpe) Id = ReadByte();
-		}
-
-		public void CloneReset()
-		{
-			_buffer = new MemoryStream();
-			_reader = new BinaryReader(_buffer);
-			_writer = new BinaryWriter(_buffer);
-			Timer.Start();
+			Id = ReadByte();
 		}
 
 		public abstract void PutPool();
 
-		public static string HexDump(byte[] bytes, int bytesPerLine = 16, bool printLineCount = false)
+		public static string HexDump(ReadOnlyMemory<byte> bytes, int bytesPerLine = 16, bool printLineCount = false)
 		{
-			StringBuilder sb = new StringBuilder();
+			return HexDump(bytes.Span, bytesPerLine, printLineCount);
+		}
+
+		private static string HexDump(ReadOnlySpan<byte> bytes, in int bytesPerLine, in bool printLineCount)
+		{
+			var sb = new StringBuilder();
 			for (int line = 0; line < bytes.Length; line += bytesPerLine)
 			{
-				byte[] lineBytes = bytes.Skip(line).Take(bytesPerLine).ToArray();
+				byte[] lineBytes = bytes.Slice(line).ToArray().Take(bytesPerLine).ToArray();
 				if (printLineCount) sb.AppendFormat("{0:x8} ", line);
 				sb.Append(string.Join(" ", lineBytes.Select(b => b.ToString("x2"))
 						.ToArray())

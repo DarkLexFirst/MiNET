@@ -1,4 +1,4 @@
-#region LICENSE
+﻿#region LICENSE
 
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
@@ -23,27 +23,18 @@
 
 #endregion
 
-namespace MiNET.Net
+namespace MiNET.Net.RakNet
 {
-	public class SplitPartPacket : Packet<SplitPartPacket>
+	public enum Reliability
 	{
-		public byte[] Message { get; set; }
-		public int SplitId { get; set; }
-		public int SplitCount { get; set; }
-		public int SplitIdx { get; set; }
-
-		public SplitPartPacket()
-		{
-		}
-
-		public override void Reset()
-		{
-			base.Reset();
-			SplitId = -1;
-			SplitCount = -1;
-			SplitIdx = -1;
-
-			Message = null;
-		}
+		Undefined = -1,
+		Unreliable = 0,
+		UnreliableSequenced = 1,
+		Reliable = 2,
+		ReliableOrdered = 3,
+		ReliableSequenced = 4,
+		UnreliableWithAckReceipt = 5,
+		ReliableWithAckReceipt = 6,
+		ReliableOrderedWithAckReceipt = 7
 	}
 }

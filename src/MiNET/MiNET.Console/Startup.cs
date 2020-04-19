@@ -23,6 +23,8 @@
 
 #endregion
 
+using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using log4net;
@@ -40,8 +42,11 @@ namespace MiNET.Console
 			var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
 			XmlConfigurator.Configure(logRepository, new FileInfo(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "log4net.xml")));
 
-			System.Console.WriteLine(MiNetServer.MiNET);
 			Log.Info(MiNetServer.MiNET);
+			System.Console.WriteLine(MiNetServer.MiNET);
+
+			var currentProcess = Process.GetCurrentProcess();
+			currentProcess.ProcessorAffinity = (IntPtr) Config.GetProperty("ProcessorAffinity", (int) currentProcess.ProcessorAffinity);
 
 			var service = new MiNetServer();
 			Log.Info("Starting...");

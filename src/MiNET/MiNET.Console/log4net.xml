@@ -48,10 +48,10 @@
 			<acceptOnMatch value="false" />
 		</filter>
 
-		<!--<filter type="log4net.Filter.LoggerMatchFilter">
-				<loggerToMatch value="MiNET.ServerInfo" />
-				<acceptOnMatch value="false" />
-			</filter>-->
+		<filter type="log4net.Filter.LoggerMatchFilter">
+			<loggerToMatch value="MiNET.Net.RakNet.ServerInfo" />
+			<acceptOnMatch value="false" />
+		</filter>
 
 		<filter type="log4net.Filter.LoggerMatchFilter">
 			<loggerToMatch value="MiNET.LevelDB" />
@@ -95,19 +95,19 @@
 		</filter>
 
 		<!--<filter type="log4net.Filter.LoggerMatchFilter">
-				<loggerToMatch value="MiNET.ServerInfo" />
-				<acceptOnMatch value="false" />
-			</filter>-->
+			<loggerToMatch value="MiNET.Net.RakNet.ConnectionInfo" />
+			<acceptOnMatch value="false" />
+		</filter>-->
 
 		<filter type="log4net.Filter.LevelRangeFilter">
-			<levelMin value="DEBUG" />
+			<levelMin value="TRACE" />
 			<levelMax value="FATAL" />
 		</filter>
 
 	</appender>
 
 	<root>
-		<level value="INFO" />
+		<level value="DEBUG" />
 		<appender-ref ref="Console" />
 		<appender-ref ref="RollingFile" />
 		<!--<appender-ref ref="DebuggerAppender"/>-->

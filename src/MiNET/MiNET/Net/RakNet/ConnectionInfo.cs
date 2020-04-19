@@ -30,14 +30,18 @@ using System.Threading;
 using log4net;
 using MiNET.Utils;
 
-namespace MiNET
+namespace MiNET.Net.RakNet
 {
-	public class ServerInfo
+	public class ConnectionInfo
 	{
-		private static readonly ILog Log = LogManager.GetLogger(typeof(ServerInfo));
+		private static readonly ILog Log = LogManager.GetLogger(typeof(ConnectionInfo));
 
-		private readonly LevelManager _levelManager;
-		public ConcurrentDictionary<IPEndPoint, PlayerNetworkSession> PlayerSessions { get; private set; }
+		public ConcurrentDictionary<IPEndPoint, RakSession> RakSessions { get; set; }
+
+		// Special property for use with ServiceKiller.
+		// Will disable reliability handling after login.
+		public bool IsEmulator { get; set; }
+		public bool DisableAck { get; set; }
 
 		public int NumberOfPlayers { get; set; }
 
@@ -63,8 +67,12 @@ namespace MiNET
 		private long _avgSizePerPacketIn;
 		private long _avgSizePerPacketOut;
 
-		public ServerInfo(LevelManager levelManager, ConcurrentDictionary<IPEndPoint, PlayerNetworkSession> playerSessions)
+		public ConnectionInfo(ConcurrentDictionary<IPEndPoint, RakSession> rakSessions)
 		{
+			RakSessions = rakSessions;
+
+			if (!Log.IsInfoEnabled) return;
+
 			//CreateCounters();
 
 			//PerformanceCounter ctrNumberOfPacketsOutPerSecond = new PerformanceCounter("MiNET", nameof(NumberOfPacketsOutPerSecond), "MiNET", false);
@@ -75,13 +83,11 @@ namespace MiNET
 			//PerformanceCounter ctrNumberOfResends = new PerformanceCounter("MiNET", nameof(NumberOfResends), "MiNET", false);
 			//PerformanceCounter ctrNumberOfFails = new PerformanceCounter("MiNET", nameof(NumberOfFails), "MiNET", false);
 
-
-			_levelManager = levelManager;
-			PlayerSessions = playerSessions;
 			{
+
 				ThroughPut = new Timer(state =>
 				{
-					NumberOfPlayers = PlayerSessions.Count;
+					NumberOfPlayers = RakSessions.Count;
 
 					//ctrNumberOfPacketsOutPerSecond.IncrementBy(NumberOfPacketsOutPerSecond);
 					//ctrNumberOfPacketsInPerSecond.IncrementBy(NumberOfPacketsInPerSecond);
@@ -104,17 +110,17 @@ namespace MiNET
 					long numberOfPacketsInPerSecond = Interlocked.Exchange(ref NumberOfPacketsInPerSecond, 0);
 
 
-					_avgSizePerPacketIn = _avgSizePerPacketIn == 0 ? packetSizeIn * 100 : (long) ((_avgSizePerPacketIn * 99) + (packetSizeIn == 0 ? 0 : numberOfPacketsInPerSecond / ((double) packetSizeIn)));
-					_avgSizePerPacketOut = _avgSizePerPacketOut == 0 ? packetSizeOut * 100 : (long) ((_avgSizePerPacketOut * 99) + (packetSizeOut == 0 ? 0 : numberOfPacketsOutPerSecond / ((double) packetSizeOut)));
-					_avgSizePerPacketIn /= 100; // running avg of 100 prev values
-					_avgSizePerPacketOut /= 100; // running avg of 100 prev values
+					_avgSizePerPacketIn = _avgSizePerPacketIn <= 0 ? packetSizeIn * 10 : (long) ((_avgSizePerPacketIn * 9) + (numberOfPacketsInPerSecond == 0 ? 0 : packetSizeIn / (double) numberOfPacketsInPerSecond));
+					_avgSizePerPacketOut = _avgSizePerPacketOut <= 0 ? packetSizeOut * 10 : (long) ((_avgSizePerPacketOut * 9) + (numberOfPacketsOutPerSecond == 0 ? 0 : packetSizeOut / (double) numberOfPacketsOutPerSecond));
+					_avgSizePerPacketIn /= 10; // running avg of 100 prev values
+					_avgSizePerPacketOut /= 10; // running avg of 100 prev values
 
 					long numberOfAckIn = Interlocked.Exchange(ref NumberOfAckReceive, 0);
 					long numberOfAckOut = Interlocked.Exchange(ref NumberOfAckSent, 0);
 					long numberOfNakIn = Interlocked.Exchange(ref NumberOfNakReceive, 0);
 					long numberOfResend = Interlocked.Exchange(ref NumberOfResends, 0);
 					long numberOfFailed = Interlocked.Exchange(ref NumberOfFails, 0);
-					
+
 					var message =
 						$"Players {NumberOfPlayers}, " +
 						$"Pkt in/out(#/s) {numberOfPacketsInPerSecond}/{numberOfPacketsOutPerSecond}, " +
@@ -129,7 +135,7 @@ namespace MiNET
 					}
 					else
 					{
-						Log.InfoFormat(message);
+						Log.Info(message);
 					}
 				}, null, 1000, 1000);
 			}

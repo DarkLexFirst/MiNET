@@ -57,12 +57,12 @@ namespace MiNET.Console
 
 				_bedrock = Process.Start(startInfo);
 				_client = new MiNetClient(new IPEndPoint(IPAddress.Parse("192.168.0.4"), 19162), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
-				_client.MessageDispatcher = new McpeClientMessageDispatcher(new ChunkGeneratorHandler(_client));
+				_client.MessageHandler = new ChunkGeneratorHandler(_client);
 				_client.StartClient();
 
-				if (_client.ServerEndpoint != null)
+				if (_client.ServerEndPoint != null)
 				{
-					while (!_client.HaveServer)
+					while (!_client.FoundServer)
 					{
 						_client.SendUnconnectedPing();
 						Thread.Sleep(100);

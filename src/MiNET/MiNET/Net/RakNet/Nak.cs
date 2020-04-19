@@ -1,4 +1,4 @@
-#region LICENSE
+﻿#region LICENSE
 
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
@@ -23,17 +23,53 @@
 
 #endregion
 
-namespace MiNET.Net
+using System;
+using System.Collections.Generic;
+
+namespace MiNET.Net.RakNet
 {
-	public enum Reliability
+	public partial class Nak : Packet<Nak>
 	{
-		Unreliable = 0,
-		UnreliableSequenced = 1,
-		Reliable = 2,
-		ReliableOrdered = 3,
-		ReliableSequenced = 4,
-		UnreliableWithAckReceipt = 5,
-		ReliableWithAckReceipt = 6,
-		ReliableOrderedWithAckReceipt = 7
+		public List<Tuple<int, int>> ranges = new List<Tuple<int, int>>();
+
+		public Nak()
+		{
+			Id = 0xa0;
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			if (Id != 0xa0) throw new Exception("Not NAK");
+			ranges.Clear();
+
+			short count = ReadShort(true);
+			for (int i = 0; i < count; i++)
+			{
+				var onlyOneSequence = ReadByte();
+				if (onlyOneSequence == 0)
+				{
+					int start = ReadLittle().IntValue();
+					int end = ReadLittle().IntValue();
+					if (end - start > 512) end = start + 512;
+
+					var range = new Tuple<int, int>(start, end);
+					ranges.Add(range);
+				}
+				else
+				{
+					int seqNo = ReadLittle().IntValue();
+					var range = new Tuple<int, int>(seqNo, seqNo);
+					ranges.Add(range);
+				}
+			}
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
 	}
 }
