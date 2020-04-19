@@ -593,7 +593,12 @@ namespace MiNET.Worlds
 				cc.BlockEntities.Add(blockEntityPair.Key, (NbtCompound) blockEntityPair.Value.Clone());
 			}
 
-			cc._cachedBatch = _cachedBatch?.Clone<McpeWrapper>();
+			McpeWrapper batch = McpeWrapper.CreateObject();
+			batch.payload = _cachedBatch.payload;
+			batch.Encode();
+			batch.MarkPermanent();
+
+			cc._cachedBatch = batch;
 
 			cc._cacheSync = new object();
 

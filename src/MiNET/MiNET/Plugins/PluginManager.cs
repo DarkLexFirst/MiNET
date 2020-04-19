@@ -651,6 +651,15 @@ namespace MiNET.Plugins
 			}
 		}
 
+		public event EventHandler<CommandEventArgs> CommandExecute;
+
+		protected virtual bool OnCommandExecute(CommandEventArgs e)
+		{
+			CommandExecute?.Invoke(this, e);
+
+			return !e.Cancel;
+		}
+
 		public object HandleCommand(Player player, string cmdline)
 		{
 			var split = Regex.Split(cmdline, "(?<=^[^\"]*(?:\"[^\"]*\"[^\"]*)*) (?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)").Select(s => s.Trim('"')).ToArray();
@@ -694,7 +703,7 @@ namespace MiNET.Plugins
 
 				MethodInfo method = overload.Method;
 
-				if (ExecuteCommand(method, player, args, out object retVal))
+				if (OnCommandExecute(new CommandEventArgs(method, player, args)) && ExecuteCommand(method, player, args, out object retVal))
 				{
 					return retVal;
 				}
@@ -1279,6 +1288,20 @@ namespace MiNET.Plugins
 			}
 
 			return sb.ToString();
+		}
+	}
+
+	public class CommandEventArgs : CancelEventArgs
+	{
+		public MethodInfo Command { get; set; }
+		public Player Player { get; set; }
+		public string[] Args { get; set; }
+
+		public CommandEventArgs(MethodInfo command, Player player, string[] args)
+		{
+			Command = command;
+			Player = player;
+			Args = args;
 		}
 	}
 }

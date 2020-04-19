@@ -34,6 +34,35 @@ using Newtonsoft.Json.Serialization;
 
 namespace MiNET.Utils.Skins
 {
+	public class SkinResourcePatch : ICloneable
+	{
+		public GeometryIdentifier Geometry { get; set; }
+
+		[JsonProperty(PropertyName = "persona_reset_resource_definitions")]
+		public bool PersonaResetResourceDefinitions { get; set; }
+
+		public object Clone()
+		{
+			var cloned = (SkinResourcePatch) MemberwiseClone();
+			cloned.Geometry = (GeometryIdentifier) Geometry?.Clone();
+
+			return cloned;
+		}
+	}
+
+	public class GeometryIdentifier : ICloneable
+	{
+		public string Default { get; set; }
+
+		[JsonProperty(PropertyName = "animated_face")]
+		public string AnimatedFace { get; set; }
+
+		public object Clone()
+		{
+			return MemberwiseClone();
+		}
+	}
+
 	public class Skin : ICloneable
 	{
 		public bool Slim { get; set; }
@@ -44,6 +73,13 @@ namespace MiNET.Utils.Skins
 		public string SkinId { get; set; }
 		[JsonIgnore]
 		public string ResourcePatch { get; set; }  // contains GeometryName
+
+		public SkinResourcePatch SkinResourcePatch
+		{
+			get => ToJSkinResourcePatch(ResourcePatch);
+			set => ResourcePatch = ToJson(value);
+		} // contains GeometryName
+
 		public int Height { get; set; }
 		public int Width { get; set; }
 		[JsonIgnore]
@@ -145,7 +181,7 @@ namespace MiNET.Utils.Skins
 			settings.MissingMemberHandling = MissingMemberHandling.Error;
 			//settings.Formatting = Formatting.Indented;
 			settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-			settings.Converters.Add(new StringEnumConverter {CamelCaseText = true});
+			settings.Converters.Add(new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() });
 
 			return JsonConvert.SerializeObject(geometryModel, settings);
 		}
@@ -158,7 +194,7 @@ namespace MiNET.Utils.Skins
 			settings.MissingMemberHandling = MissingMemberHandling.Error;
 			//settings.Formatting = Formatting.Indented;
 			settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-			settings.Converters.Add(new StringEnumConverter { CamelCaseText = true });
+			settings.Converters.Add(new StringEnumConverter { NamingStrategy = new CamelCaseNamingStrategy() });
 
 			return JsonConvert.SerializeObject(this, settings);
 		}
@@ -228,35 +264,46 @@ namespace MiNET.Utils.Skins
 			return skin;
 		}
 
+		public static string ToJson(SkinResourcePatch model)
+		{
+			var settings = new JsonSerializerSettings();
+			settings.NullValueHandling = NullValueHandling.Ignore;
+			settings.DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate;
+			settings.MissingMemberHandling = MissingMemberHandling.Error;
+			//settings.Formatting = Formatting.Indented;
+			settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+			settings.Converters.Add(new StringEnumConverter { CamelCaseText = true });
+
+			string json = JsonConvert.SerializeObject(model, settings);
+
+			return json;
+		}
+
+		public static SkinResourcePatch ToJSkinResourcePatch(string json)
+		{
+			var settings = new JsonSerializerSettings();
+			settings.NullValueHandling = NullValueHandling.Ignore;
+			settings.DefaultValueHandling = DefaultValueHandling.IgnoreAndPopulate;
+			settings.MissingMemberHandling = MissingMemberHandling.Error;
+			//settings.Formatting = Formatting.Indented;
+			settings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+			settings.Converters.Add(new StringEnumConverter { CamelCaseText = true });
+
+			var obj = JsonConvert.DeserializeObject<SkinResourcePatch>(json, settings);
+
+			return obj;
+		}
+
 		public object Clone()
 		{
-			byte[] clonedSkinData = null;
-
-			if (Data != null)
-			{
-				clonedSkinData = new byte[Data.Length];
-				Data.CopyTo(clonedSkinData, 0);
-			}
-
-			var clonedSkin = new Skin
-			{
-				SkinId = SkinId,
-				GeometryData = GeometryData,
-				Slim = Slim,
-				Data = clonedSkinData,
-				Cape = Cape == null ? null : (Cape)Cape.Clone(),
-				IsPersonaSkin = IsPersonaSkin,
-				IsPremiumSkin = IsPremiumSkin,
-				ResourcePatch = ResourcePatch,
-				Height = Height,
-				Width = Width,
-				GeometryName = GeometryName,
-				AnimationData = AnimationData,
-			};
+			var clonedSkin = (Skin) MemberwiseClone();
+			clonedSkin.Data = Data?.Clone() as byte[];
+			clonedSkin.Cape = Cape?.Clone() as Cape;
+			clonedSkin.SkinResourcePatch = SkinResourcePatch?.Clone() as SkinResourcePatch;
 
 			foreach (Animation animation in Animations)
 			{
-				clonedSkin.Animations.Add((Animation)animation.Clone());
+				clonedSkin.Animations.Add((Animation) animation.Clone());
 			}
 
 			return clonedSkin;
