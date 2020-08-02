@@ -35,6 +35,7 @@ using MiNET.Utils;
 using MiNET.Utils.Skins;
 using MiNET.Items;
 using MiNET.Crafting;
+using MiNET.Net.RakNet;
 using little = MiNET.Utils.Int24; // friendly name
 using LongString = System.String;
 
@@ -42,8 +43,8 @@ namespace MiNET.Net
 {
 	public class McpeProtocolInfo
 	{
-		public const int ProtocolVersion = 389;
-		public const string GameVersion = "1.14.1";
+		public const int ProtocolVersion = 407;
+		public const string GameVersion = "1.16.0";
 	}
 
 	public interface IMcpeMessageHandler
@@ -94,12 +95,16 @@ namespace MiNET.Net
 		void HandleMcpeModalFormResponse(McpeModalFormResponse message);
 		void HandleMcpeServerSettingsRequest(McpeServerSettingsRequest message);
 		void HandleMcpeLabTable(McpeLabTable message);
-		void HandleMcpeSetLocalPlayerAsInitializedPacket(McpeSetLocalPlayerAsInitializedPacket message);
-		void HandleMcpeNetworkStackLatencyPacket(McpeNetworkStackLatencyPacket message);
-		void HandleMcpeScriptCustomEventPacket(McpeScriptCustomEventPacket message);
+		void HandleMcpeSetLocalPlayerAsInitialized(McpeSetLocalPlayerAsInitialized message);
+		void HandleMcpeNetworkStackLatency(McpeNetworkStackLatency message);
+		void HandleMcpeScriptCustomEvent(McpeScriptCustomEvent message);
 		void HandleMcpeLevelSoundEventV2(McpeLevelSoundEventV2 message);
 		void HandleMcpeLevelSoundEvent(McpeLevelSoundEvent message);
 		void HandleMcpeClientCacheStatus(McpeClientCacheStatus message);
+		void HandleMcpeNetworkSettings(McpeNetworkSettings message);
+		void HandleMcpeItemStackRequest(McpeItemStackRequest message);
+		void HandleMcpeUpdatePlayerGameType(McpeUpdatePlayerGameType message);
+		void HandleMcpePacketViolationWarning(McpePacketViolationWarning message);
 	}
 
 	public interface IMcpeClientMessageHandler
@@ -199,10 +204,10 @@ namespace MiNET.Net
 		void HandleMcpeLabTable(McpeLabTable message);
 		void HandleMcpeUpdateBlockSynced(McpeUpdateBlockSynced message);
 		void HandleMcpeMoveEntityDelta(McpeMoveEntityDelta message);
-		void HandleMcpeSetScoreboardIdentityPacket(McpeSetScoreboardIdentityPacket message);
-		void HandleMcpeUpdateSoftEnumPacket(McpeUpdateSoftEnumPacket message);
-		void HandleMcpeNetworkStackLatencyPacket(McpeNetworkStackLatencyPacket message);
-		void HandleMcpeScriptCustomEventPacket(McpeScriptCustomEventPacket message);
+		void HandleMcpeSetScoreboardIdentity(McpeSetScoreboardIdentity message);
+		void HandleMcpeUpdateSoftEnum(McpeUpdateSoftEnum message);
+		void HandleMcpeNetworkStackLatency(McpeNetworkStackLatency message);
+		void HandleMcpeScriptCustomEvent(McpeScriptCustomEvent message);
 		void HandleMcpeSpawnParticleEffect(McpeSpawnParticleEffect message);
 		void HandleMcpeAvailableEntityIdentifiers(McpeAvailableEntityIdentifiers message);
 		void HandleMcpeLevelSoundEventV2(McpeLevelSoundEventV2 message);
@@ -220,7 +225,11 @@ namespace MiNET.Net
 		void HandleMcpeUpdateBlockProperties(McpeUpdateBlockProperties message);
 		void HandleMcpeClientCacheBlobStatus(McpeClientCacheBlobStatus message);
 		void HandleMcpeClientCacheMissResponse(McpeClientCacheMissResponse message);
-		void HandleMcpeNetworkSettingsPacket(McpeNetworkSettingsPacket message);
+		void HandleMcpeNetworkSettings(McpeNetworkSettings message);
+		void HandleMcpeCreativeContent(McpeCreativeContent message);
+		void HandleMcpePlayerEnchantOptions(McpePlayerEnchantOptions message);
+		void HandleMcpeItemStackResponse(McpeItemStackResponse message);
+		void HandleMcpeAlexEntityAnimation(McpeAlexEntityAnimation message);
 		void HandleFtlCreatePlayer(FtlCreatePlayer message);
 	}
 
@@ -235,126 +244,377 @@ namespace MiNET.Net
 
 		public bool HandlePacket(Packet message)
 		{
-			if (false) {}
-			else if (typeof(McpePlayStatus) == message.GetType()) _messageHandler.HandleMcpePlayStatus((McpePlayStatus) message);
-			else if (typeof(McpeServerToClientHandshake) == message.GetType()) _messageHandler.HandleMcpeServerToClientHandshake((McpeServerToClientHandshake) message);
-			else if (typeof(McpeDisconnect) == message.GetType()) _messageHandler.HandleMcpeDisconnect((McpeDisconnect) message);
-			else if (typeof(McpeResourcePacksInfo) == message.GetType()) _messageHandler.HandleMcpeResourcePacksInfo((McpeResourcePacksInfo) message);
-			else if (typeof(McpeResourcePackStack) == message.GetType()) _messageHandler.HandleMcpeResourcePackStack((McpeResourcePackStack) message);
-			else if (typeof(McpeText) == message.GetType()) _messageHandler.HandleMcpeText((McpeText) message);
-			else if (typeof(McpeSetTime) == message.GetType()) _messageHandler.HandleMcpeSetTime((McpeSetTime) message);
-			else if (typeof(McpeStartGame) == message.GetType()) _messageHandler.HandleMcpeStartGame((McpeStartGame) message);
-			else if (typeof(McpeAddPlayer) == message.GetType()) _messageHandler.HandleMcpeAddPlayer((McpeAddPlayer) message);
-			else if (typeof(McpeAddEntity) == message.GetType()) _messageHandler.HandleMcpeAddEntity((McpeAddEntity) message);
-			else if (typeof(McpeRemoveEntity) == message.GetType()) _messageHandler.HandleMcpeRemoveEntity((McpeRemoveEntity) message);
-			else if (typeof(McpeAddItemEntity) == message.GetType()) _messageHandler.HandleMcpeAddItemEntity((McpeAddItemEntity) message);
-			else if (typeof(McpeTakeItemEntity) == message.GetType()) _messageHandler.HandleMcpeTakeItemEntity((McpeTakeItemEntity) message);
-			else if (typeof(McpeMoveEntity) == message.GetType()) _messageHandler.HandleMcpeMoveEntity((McpeMoveEntity) message);
-			else if (typeof(McpeMovePlayer) == message.GetType()) _messageHandler.HandleMcpeMovePlayer((McpeMovePlayer) message);
-			else if (typeof(McpeRiderJump) == message.GetType()) _messageHandler.HandleMcpeRiderJump((McpeRiderJump) message);
-			else if (typeof(McpeUpdateBlock) == message.GetType()) _messageHandler.HandleMcpeUpdateBlock((McpeUpdateBlock) message);
-			else if (typeof(McpeAddPainting) == message.GetType()) _messageHandler.HandleMcpeAddPainting((McpeAddPainting) message);
-			else if (typeof(McpeTickSync) == message.GetType()) _messageHandler.HandleMcpeTickSync((McpeTickSync) message);
-			else if (typeof(McpeLevelSoundEventOld) == message.GetType()) _messageHandler.HandleMcpeLevelSoundEventOld((McpeLevelSoundEventOld) message);
-			else if (typeof(McpeLevelEvent) == message.GetType()) _messageHandler.HandleMcpeLevelEvent((McpeLevelEvent) message);
-			else if (typeof(McpeBlockEvent) == message.GetType()) _messageHandler.HandleMcpeBlockEvent((McpeBlockEvent) message);
-			else if (typeof(McpeEntityEvent) == message.GetType()) _messageHandler.HandleMcpeEntityEvent((McpeEntityEvent) message);
-			else if (typeof(McpeMobEffect) == message.GetType()) _messageHandler.HandleMcpeMobEffect((McpeMobEffect) message);
-			else if (typeof(McpeUpdateAttributes) == message.GetType()) _messageHandler.HandleMcpeUpdateAttributes((McpeUpdateAttributes) message);
-			else if (typeof(McpeInventoryTransaction) == message.GetType()) _messageHandler.HandleMcpeInventoryTransaction((McpeInventoryTransaction) message);
-			else if (typeof(McpeMobEquipment) == message.GetType()) _messageHandler.HandleMcpeMobEquipment((McpeMobEquipment) message);
-			else if (typeof(McpeMobArmorEquipment) == message.GetType()) _messageHandler.HandleMcpeMobArmorEquipment((McpeMobArmorEquipment) message);
-			else if (typeof(McpeInteract) == message.GetType()) _messageHandler.HandleMcpeInteract((McpeInteract) message);
-			else if (typeof(McpeHurtArmor) == message.GetType()) _messageHandler.HandleMcpeHurtArmor((McpeHurtArmor) message);
-			else if (typeof(McpeSetEntityData) == message.GetType()) _messageHandler.HandleMcpeSetEntityData((McpeSetEntityData) message);
-			else if (typeof(McpeSetEntityMotion) == message.GetType()) _messageHandler.HandleMcpeSetEntityMotion((McpeSetEntityMotion) message);
-			else if (typeof(McpeSetEntityLink) == message.GetType()) _messageHandler.HandleMcpeSetEntityLink((McpeSetEntityLink) message);
-			else if (typeof(McpeSetHealth) == message.GetType()) _messageHandler.HandleMcpeSetHealth((McpeSetHealth) message);
-			else if (typeof(McpeSetSpawnPosition) == message.GetType()) _messageHandler.HandleMcpeSetSpawnPosition((McpeSetSpawnPosition) message);
-			else if (typeof(McpeAnimate) == message.GetType()) _messageHandler.HandleMcpeAnimate((McpeAnimate) message);
-			else if (typeof(McpeRespawn) == message.GetType()) _messageHandler.HandleMcpeRespawn((McpeRespawn) message);
-			else if (typeof(McpeContainerOpen) == message.GetType()) _messageHandler.HandleMcpeContainerOpen((McpeContainerOpen) message);
-			else if (typeof(McpeContainerClose) == message.GetType()) _messageHandler.HandleMcpeContainerClose((McpeContainerClose) message);
-			else if (typeof(McpePlayerHotbar) == message.GetType()) _messageHandler.HandleMcpePlayerHotbar((McpePlayerHotbar) message);
-			else if (typeof(McpeInventoryContent) == message.GetType()) _messageHandler.HandleMcpeInventoryContent((McpeInventoryContent) message);
-			else if (typeof(McpeInventorySlot) == message.GetType()) _messageHandler.HandleMcpeInventorySlot((McpeInventorySlot) message);
-			else if (typeof(McpeContainerSetData) == message.GetType()) _messageHandler.HandleMcpeContainerSetData((McpeContainerSetData) message);
-			else if (typeof(McpeCraftingData) == message.GetType()) _messageHandler.HandleMcpeCraftingData((McpeCraftingData) message);
-			else if (typeof(McpeCraftingEvent) == message.GetType()) _messageHandler.HandleMcpeCraftingEvent((McpeCraftingEvent) message);
-			else if (typeof(McpeGuiDataPickItem) == message.GetType()) _messageHandler.HandleMcpeGuiDataPickItem((McpeGuiDataPickItem) message);
-			else if (typeof(McpeAdventureSettings) == message.GetType()) _messageHandler.HandleMcpeAdventureSettings((McpeAdventureSettings) message);
-			else if (typeof(McpeBlockEntityData) == message.GetType()) _messageHandler.HandleMcpeBlockEntityData((McpeBlockEntityData) message);
-			else if (typeof(McpeLevelChunk) == message.GetType()) _messageHandler.HandleMcpeLevelChunk((McpeLevelChunk) message);
-			else if (typeof(McpeSetCommandsEnabled) == message.GetType()) _messageHandler.HandleMcpeSetCommandsEnabled((McpeSetCommandsEnabled) message);
-			else if (typeof(McpeSetDifficulty) == message.GetType()) _messageHandler.HandleMcpeSetDifficulty((McpeSetDifficulty) message);
-			else if (typeof(McpeChangeDimension) == message.GetType()) _messageHandler.HandleMcpeChangeDimension((McpeChangeDimension) message);
-			else if (typeof(McpeSetPlayerGameType) == message.GetType()) _messageHandler.HandleMcpeSetPlayerGameType((McpeSetPlayerGameType) message);
-			else if (typeof(McpePlayerList) == message.GetType()) _messageHandler.HandleMcpePlayerList((McpePlayerList) message);
-			else if (typeof(McpeSimpleEvent) == message.GetType()) _messageHandler.HandleMcpeSimpleEvent((McpeSimpleEvent) message);
-			else if (typeof(McpeTelemetryEvent) == message.GetType()) _messageHandler.HandleMcpeTelemetryEvent((McpeTelemetryEvent) message);
-			else if (typeof(McpeSpawnExperienceOrb) == message.GetType()) _messageHandler.HandleMcpeSpawnExperienceOrb((McpeSpawnExperienceOrb) message);
-			else if (typeof(McpeClientboundMapItemData) == message.GetType()) _messageHandler.HandleMcpeClientboundMapItemData((McpeClientboundMapItemData) message);
-			else if (typeof(McpeMapInfoRequest) == message.GetType()) _messageHandler.HandleMcpeMapInfoRequest((McpeMapInfoRequest) message);
-			else if (typeof(McpeRequestChunkRadius) == message.GetType()) _messageHandler.HandleMcpeRequestChunkRadius((McpeRequestChunkRadius) message);
-			else if (typeof(McpeChunkRadiusUpdate) == message.GetType()) _messageHandler.HandleMcpeChunkRadiusUpdate((McpeChunkRadiusUpdate) message);
-			else if (typeof(McpeItemFrameDropItem) == message.GetType()) _messageHandler.HandleMcpeItemFrameDropItem((McpeItemFrameDropItem) message);
-			else if (typeof(McpeGameRulesChanged) == message.GetType()) _messageHandler.HandleMcpeGameRulesChanged((McpeGameRulesChanged) message);
-			else if (typeof(McpeCamera) == message.GetType()) _messageHandler.HandleMcpeCamera((McpeCamera) message);
-			else if (typeof(McpeBossEvent) == message.GetType()) _messageHandler.HandleMcpeBossEvent((McpeBossEvent) message);
-			else if (typeof(McpeShowCredits) == message.GetType()) _messageHandler.HandleMcpeShowCredits((McpeShowCredits) message);
-			else if (typeof(McpeAvailableCommands) == message.GetType()) _messageHandler.HandleMcpeAvailableCommands((McpeAvailableCommands) message);
-			else if (typeof(McpeCommandOutput) == message.GetType()) _messageHandler.HandleMcpeCommandOutput((McpeCommandOutput) message);
-			else if (typeof(McpeUpdateTrade) == message.GetType()) _messageHandler.HandleMcpeUpdateTrade((McpeUpdateTrade) message);
-			else if (typeof(McpeUpdateEquipment) == message.GetType()) _messageHandler.HandleMcpeUpdateEquipment((McpeUpdateEquipment) message);
-			else if (typeof(McpeResourcePackDataInfo) == message.GetType()) _messageHandler.HandleMcpeResourcePackDataInfo((McpeResourcePackDataInfo) message);
-			else if (typeof(McpeResourcePackChunkData) == message.GetType()) _messageHandler.HandleMcpeResourcePackChunkData((McpeResourcePackChunkData) message);
-			else if (typeof(McpeTransfer) == message.GetType()) _messageHandler.HandleMcpeTransfer((McpeTransfer) message);
-			else if (typeof(McpePlaySound) == message.GetType()) _messageHandler.HandleMcpePlaySound((McpePlaySound) message);
-			else if (typeof(McpeStopSound) == message.GetType()) _messageHandler.HandleMcpeStopSound((McpeStopSound) message);
-			else if (typeof(McpeSetTitle) == message.GetType()) _messageHandler.HandleMcpeSetTitle((McpeSetTitle) message);
-			else if (typeof(McpeAddBehaviorTree) == message.GetType()) _messageHandler.HandleMcpeAddBehaviorTree((McpeAddBehaviorTree) message);
-			else if (typeof(McpeStructureBlockUpdate) == message.GetType()) _messageHandler.HandleMcpeStructureBlockUpdate((McpeStructureBlockUpdate) message);
-			else if (typeof(McpeShowStoreOffer) == message.GetType()) _messageHandler.HandleMcpeShowStoreOffer((McpeShowStoreOffer) message);
-			else if (typeof(McpePlayerSkin) == message.GetType()) _messageHandler.HandleMcpePlayerSkin((McpePlayerSkin) message);
-			else if (typeof(McpeSubClientLogin) == message.GetType()) _messageHandler.HandleMcpeSubClientLogin((McpeSubClientLogin) message);
-			else if (typeof(McpeInitiateWebSocketConnection) == message.GetType()) _messageHandler.HandleMcpeInitiateWebSocketConnection((McpeInitiateWebSocketConnection) message);
-			else if (typeof(McpeSetLastHurtBy) == message.GetType()) _messageHandler.HandleMcpeSetLastHurtBy((McpeSetLastHurtBy) message);
-			else if (typeof(McpeBookEdit) == message.GetType()) _messageHandler.HandleMcpeBookEdit((McpeBookEdit) message);
-			else if (typeof(McpeNpcRequest) == message.GetType()) _messageHandler.HandleMcpeNpcRequest((McpeNpcRequest) message);
-			else if (typeof(McpeModalFormRequest) == message.GetType()) _messageHandler.HandleMcpeModalFormRequest((McpeModalFormRequest) message);
-			else if (typeof(McpeServerSettingsResponse) == message.GetType()) _messageHandler.HandleMcpeServerSettingsResponse((McpeServerSettingsResponse) message);
-			else if (typeof(McpeShowProfile) == message.GetType()) _messageHandler.HandleMcpeShowProfile((McpeShowProfile) message);
-			else if (typeof(McpeSetDefaultGameType) == message.GetType()) _messageHandler.HandleMcpeSetDefaultGameType((McpeSetDefaultGameType) message);
-			else if (typeof(McpeRemoveObjective) == message.GetType()) _messageHandler.HandleMcpeRemoveObjective((McpeRemoveObjective) message);
-			else if (typeof(McpeSetDisplayObjective) == message.GetType()) _messageHandler.HandleMcpeSetDisplayObjective((McpeSetDisplayObjective) message);
-			else if (typeof(McpeSetScore) == message.GetType()) _messageHandler.HandleMcpeSetScore((McpeSetScore) message);
-			else if (typeof(McpeLabTable) == message.GetType()) _messageHandler.HandleMcpeLabTable((McpeLabTable) message);
-			else if (typeof(McpeUpdateBlockSynced) == message.GetType()) _messageHandler.HandleMcpeUpdateBlockSynced((McpeUpdateBlockSynced) message);
-			else if (typeof(McpeMoveEntityDelta) == message.GetType()) _messageHandler.HandleMcpeMoveEntityDelta((McpeMoveEntityDelta) message);
-			else if (typeof(McpeSetScoreboardIdentityPacket) == message.GetType()) _messageHandler.HandleMcpeSetScoreboardIdentityPacket((McpeSetScoreboardIdentityPacket) message);
-			else if (typeof(McpeUpdateSoftEnumPacket) == message.GetType()) _messageHandler.HandleMcpeUpdateSoftEnumPacket((McpeUpdateSoftEnumPacket) message);
-			else if (typeof(McpeNetworkStackLatencyPacket) == message.GetType()) _messageHandler.HandleMcpeNetworkStackLatencyPacket((McpeNetworkStackLatencyPacket) message);
-			else if (typeof(McpeScriptCustomEventPacket) == message.GetType()) _messageHandler.HandleMcpeScriptCustomEventPacket((McpeScriptCustomEventPacket) message);
-			else if (typeof(McpeSpawnParticleEffect) == message.GetType()) _messageHandler.HandleMcpeSpawnParticleEffect((McpeSpawnParticleEffect) message);
-			else if (typeof(McpeAvailableEntityIdentifiers) == message.GetType()) _messageHandler.HandleMcpeAvailableEntityIdentifiers((McpeAvailableEntityIdentifiers) message);
-			else if (typeof(McpeLevelSoundEventV2) == message.GetType()) _messageHandler.HandleMcpeLevelSoundEventV2((McpeLevelSoundEventV2) message);
-			else if (typeof(McpeNetworkChunkPublisherUpdate) == message.GetType()) _messageHandler.HandleMcpeNetworkChunkPublisherUpdate((McpeNetworkChunkPublisherUpdate) message);
-			else if (typeof(McpeBiomeDefinitionList) == message.GetType()) _messageHandler.HandleMcpeBiomeDefinitionList((McpeBiomeDefinitionList) message);
-			else if (typeof(McpeLevelSoundEvent) == message.GetType()) _messageHandler.HandleMcpeLevelSoundEvent((McpeLevelSoundEvent) message);
-			else if (typeof(McpeLevelEventGeneric) == message.GetType()) _messageHandler.HandleMcpeLevelEventGeneric((McpeLevelEventGeneric) message);
-			else if (typeof(McpeLecternUpdate) == message.GetType()) _messageHandler.HandleMcpeLecternUpdate((McpeLecternUpdate) message);
-			else if (typeof(McpeVideoStreamConnect) == message.GetType()) _messageHandler.HandleMcpeVideoStreamConnect((McpeVideoStreamConnect) message);
-			else if (typeof(McpeClientCacheStatus) == message.GetType()) _messageHandler.HandleMcpeClientCacheStatus((McpeClientCacheStatus) message);
-			else if (typeof(McpeOnScreenTextureAnimation) == message.GetType()) _messageHandler.HandleMcpeOnScreenTextureAnimation((McpeOnScreenTextureAnimation) message);
-			else if (typeof(McpeMapCreateLockedCopy) == message.GetType()) _messageHandler.HandleMcpeMapCreateLockedCopy((McpeMapCreateLockedCopy) message);
-			else if (typeof(McpeStructureTemplateDataExportRequest) == message.GetType()) _messageHandler.HandleMcpeStructureTemplateDataExportRequest((McpeStructureTemplateDataExportRequest) message);
-			else if (typeof(McpeStructureTemplateDataExportResponse) == message.GetType()) _messageHandler.HandleMcpeStructureTemplateDataExportResponse((McpeStructureTemplateDataExportResponse) message);
-			else if (typeof(McpeUpdateBlockProperties) == message.GetType()) _messageHandler.HandleMcpeUpdateBlockProperties((McpeUpdateBlockProperties) message);
-			else if (typeof(McpeClientCacheBlobStatus) == message.GetType()) _messageHandler.HandleMcpeClientCacheBlobStatus((McpeClientCacheBlobStatus) message);
-			else if (typeof(McpeClientCacheMissResponse) == message.GetType()) _messageHandler.HandleMcpeClientCacheMissResponse((McpeClientCacheMissResponse) message);
-			else if (typeof(McpeNetworkSettingsPacket) == message.GetType()) _messageHandler.HandleMcpeNetworkSettingsPacket((McpeNetworkSettingsPacket) message);
-			else if (typeof(FtlCreatePlayer) == message.GetType()) _messageHandler.HandleFtlCreatePlayer((FtlCreatePlayer) message);
-			else return false;
+			switch (message)
+			{
+				case McpePlayStatus msg:
+					_messageHandler.HandleMcpePlayStatus(msg);
+					break;
+				case McpeServerToClientHandshake msg:
+					_messageHandler.HandleMcpeServerToClientHandshake(msg);
+					break;
+				case McpeDisconnect msg:
+					_messageHandler.HandleMcpeDisconnect(msg);
+					break;
+				case McpeResourcePacksInfo msg:
+					_messageHandler.HandleMcpeResourcePacksInfo(msg);
+					break;
+				case McpeResourcePackStack msg:
+					_messageHandler.HandleMcpeResourcePackStack(msg);
+					break;
+				case McpeText msg:
+					_messageHandler.HandleMcpeText(msg);
+					break;
+				case McpeSetTime msg:
+					_messageHandler.HandleMcpeSetTime(msg);
+					break;
+				case McpeStartGame msg:
+					_messageHandler.HandleMcpeStartGame(msg);
+					break;
+				case McpeAddPlayer msg:
+					_messageHandler.HandleMcpeAddPlayer(msg);
+					break;
+				case McpeAddEntity msg:
+					_messageHandler.HandleMcpeAddEntity(msg);
+					break;
+				case McpeRemoveEntity msg:
+					_messageHandler.HandleMcpeRemoveEntity(msg);
+					break;
+				case McpeAddItemEntity msg:
+					_messageHandler.HandleMcpeAddItemEntity(msg);
+					break;
+				case McpeTakeItemEntity msg:
+					_messageHandler.HandleMcpeTakeItemEntity(msg);
+					break;
+				case McpeMoveEntity msg:
+					_messageHandler.HandleMcpeMoveEntity(msg);
+					break;
+				case McpeMovePlayer msg:
+					_messageHandler.HandleMcpeMovePlayer(msg);
+					break;
+				case McpeRiderJump msg:
+					_messageHandler.HandleMcpeRiderJump(msg);
+					break;
+				case McpeUpdateBlock msg:
+					_messageHandler.HandleMcpeUpdateBlock(msg);
+					break;
+				case McpeAddPainting msg:
+					_messageHandler.HandleMcpeAddPainting(msg);
+					break;
+				case McpeTickSync msg:
+					_messageHandler.HandleMcpeTickSync(msg);
+					break;
+				case McpeLevelSoundEventOld msg:
+					_messageHandler.HandleMcpeLevelSoundEventOld(msg);
+					break;
+				case McpeLevelEvent msg:
+					_messageHandler.HandleMcpeLevelEvent(msg);
+					break;
+				case McpeBlockEvent msg:
+					_messageHandler.HandleMcpeBlockEvent(msg);
+					break;
+				case McpeEntityEvent msg:
+					_messageHandler.HandleMcpeEntityEvent(msg);
+					break;
+				case McpeMobEffect msg:
+					_messageHandler.HandleMcpeMobEffect(msg);
+					break;
+				case McpeUpdateAttributes msg:
+					_messageHandler.HandleMcpeUpdateAttributes(msg);
+					break;
+				case McpeInventoryTransaction msg:
+					_messageHandler.HandleMcpeInventoryTransaction(msg);
+					break;
+				case McpeMobEquipment msg:
+					_messageHandler.HandleMcpeMobEquipment(msg);
+					break;
+				case McpeMobArmorEquipment msg:
+					_messageHandler.HandleMcpeMobArmorEquipment(msg);
+					break;
+				case McpeInteract msg:
+					_messageHandler.HandleMcpeInteract(msg);
+					break;
+				case McpeHurtArmor msg:
+					_messageHandler.HandleMcpeHurtArmor(msg);
+					break;
+				case McpeSetEntityData msg:
+					_messageHandler.HandleMcpeSetEntityData(msg);
+					break;
+				case McpeSetEntityMotion msg:
+					_messageHandler.HandleMcpeSetEntityMotion(msg);
+					break;
+				case McpeSetEntityLink msg:
+					_messageHandler.HandleMcpeSetEntityLink(msg);
+					break;
+				case McpeSetHealth msg:
+					_messageHandler.HandleMcpeSetHealth(msg);
+					break;
+				case McpeSetSpawnPosition msg:
+					_messageHandler.HandleMcpeSetSpawnPosition(msg);
+					break;
+				case McpeAnimate msg:
+					_messageHandler.HandleMcpeAnimate(msg);
+					break;
+				case McpeRespawn msg:
+					_messageHandler.HandleMcpeRespawn(msg);
+					break;
+				case McpeContainerOpen msg:
+					_messageHandler.HandleMcpeContainerOpen(msg);
+					break;
+				case McpeContainerClose msg:
+					_messageHandler.HandleMcpeContainerClose(msg);
+					break;
+				case McpePlayerHotbar msg:
+					_messageHandler.HandleMcpePlayerHotbar(msg);
+					break;
+				case McpeInventoryContent msg:
+					_messageHandler.HandleMcpeInventoryContent(msg);
+					break;
+				case McpeInventorySlot msg:
+					_messageHandler.HandleMcpeInventorySlot(msg);
+					break;
+				case McpeContainerSetData msg:
+					_messageHandler.HandleMcpeContainerSetData(msg);
+					break;
+				case McpeCraftingData msg:
+					_messageHandler.HandleMcpeCraftingData(msg);
+					break;
+				case McpeCraftingEvent msg:
+					_messageHandler.HandleMcpeCraftingEvent(msg);
+					break;
+				case McpeGuiDataPickItem msg:
+					_messageHandler.HandleMcpeGuiDataPickItem(msg);
+					break;
+				case McpeAdventureSettings msg:
+					_messageHandler.HandleMcpeAdventureSettings(msg);
+					break;
+				case McpeBlockEntityData msg:
+					_messageHandler.HandleMcpeBlockEntityData(msg);
+					break;
+				case McpeLevelChunk msg:
+					_messageHandler.HandleMcpeLevelChunk(msg);
+					break;
+				case McpeSetCommandsEnabled msg:
+					_messageHandler.HandleMcpeSetCommandsEnabled(msg);
+					break;
+				case McpeSetDifficulty msg:
+					_messageHandler.HandleMcpeSetDifficulty(msg);
+					break;
+				case McpeChangeDimension msg:
+					_messageHandler.HandleMcpeChangeDimension(msg);
+					break;
+				case McpeSetPlayerGameType msg:
+					_messageHandler.HandleMcpeSetPlayerGameType(msg);
+					break;
+				case McpePlayerList msg:
+					_messageHandler.HandleMcpePlayerList(msg);
+					break;
+				case McpeSimpleEvent msg:
+					_messageHandler.HandleMcpeSimpleEvent(msg);
+					break;
+				case McpeTelemetryEvent msg:
+					_messageHandler.HandleMcpeTelemetryEvent(msg);
+					break;
+				case McpeSpawnExperienceOrb msg:
+					_messageHandler.HandleMcpeSpawnExperienceOrb(msg);
+					break;
+				case McpeClientboundMapItemData msg:
+					_messageHandler.HandleMcpeClientboundMapItemData(msg);
+					break;
+				case McpeMapInfoRequest msg:
+					_messageHandler.HandleMcpeMapInfoRequest(msg);
+					break;
+				case McpeRequestChunkRadius msg:
+					_messageHandler.HandleMcpeRequestChunkRadius(msg);
+					break;
+				case McpeChunkRadiusUpdate msg:
+					_messageHandler.HandleMcpeChunkRadiusUpdate(msg);
+					break;
+				case McpeItemFrameDropItem msg:
+					_messageHandler.HandleMcpeItemFrameDropItem(msg);
+					break;
+				case McpeGameRulesChanged msg:
+					_messageHandler.HandleMcpeGameRulesChanged(msg);
+					break;
+				case McpeCamera msg:
+					_messageHandler.HandleMcpeCamera(msg);
+					break;
+				case McpeBossEvent msg:
+					_messageHandler.HandleMcpeBossEvent(msg);
+					break;
+				case McpeShowCredits msg:
+					_messageHandler.HandleMcpeShowCredits(msg);
+					break;
+				case McpeAvailableCommands msg:
+					_messageHandler.HandleMcpeAvailableCommands(msg);
+					break;
+				case McpeCommandOutput msg:
+					_messageHandler.HandleMcpeCommandOutput(msg);
+					break;
+				case McpeUpdateTrade msg:
+					_messageHandler.HandleMcpeUpdateTrade(msg);
+					break;
+				case McpeUpdateEquipment msg:
+					_messageHandler.HandleMcpeUpdateEquipment(msg);
+					break;
+				case McpeResourcePackDataInfo msg:
+					_messageHandler.HandleMcpeResourcePackDataInfo(msg);
+					break;
+				case McpeResourcePackChunkData msg:
+					_messageHandler.HandleMcpeResourcePackChunkData(msg);
+					break;
+				case McpeTransfer msg:
+					_messageHandler.HandleMcpeTransfer(msg);
+					break;
+				case McpePlaySound msg:
+					_messageHandler.HandleMcpePlaySound(msg);
+					break;
+				case McpeStopSound msg:
+					_messageHandler.HandleMcpeStopSound(msg);
+					break;
+				case McpeSetTitle msg:
+					_messageHandler.HandleMcpeSetTitle(msg);
+					break;
+				case McpeAddBehaviorTree msg:
+					_messageHandler.HandleMcpeAddBehaviorTree(msg);
+					break;
+				case McpeStructureBlockUpdate msg:
+					_messageHandler.HandleMcpeStructureBlockUpdate(msg);
+					break;
+				case McpeShowStoreOffer msg:
+					_messageHandler.HandleMcpeShowStoreOffer(msg);
+					break;
+				case McpePlayerSkin msg:
+					_messageHandler.HandleMcpePlayerSkin(msg);
+					break;
+				case McpeSubClientLogin msg:
+					_messageHandler.HandleMcpeSubClientLogin(msg);
+					break;
+				case McpeInitiateWebSocketConnection msg:
+					_messageHandler.HandleMcpeInitiateWebSocketConnection(msg);
+					break;
+				case McpeSetLastHurtBy msg:
+					_messageHandler.HandleMcpeSetLastHurtBy(msg);
+					break;
+				case McpeBookEdit msg:
+					_messageHandler.HandleMcpeBookEdit(msg);
+					break;
+				case McpeNpcRequest msg:
+					_messageHandler.HandleMcpeNpcRequest(msg);
+					break;
+				case McpeModalFormRequest msg:
+					_messageHandler.HandleMcpeModalFormRequest(msg);
+					break;
+				case McpeServerSettingsResponse msg:
+					_messageHandler.HandleMcpeServerSettingsResponse(msg);
+					break;
+				case McpeShowProfile msg:
+					_messageHandler.HandleMcpeShowProfile(msg);
+					break;
+				case McpeSetDefaultGameType msg:
+					_messageHandler.HandleMcpeSetDefaultGameType(msg);
+					break;
+				case McpeRemoveObjective msg:
+					_messageHandler.HandleMcpeRemoveObjective(msg);
+					break;
+				case McpeSetDisplayObjective msg:
+					_messageHandler.HandleMcpeSetDisplayObjective(msg);
+					break;
+				case McpeSetScore msg:
+					_messageHandler.HandleMcpeSetScore(msg);
+					break;
+				case McpeLabTable msg:
+					_messageHandler.HandleMcpeLabTable(msg);
+					break;
+				case McpeUpdateBlockSynced msg:
+					_messageHandler.HandleMcpeUpdateBlockSynced(msg);
+					break;
+				case McpeMoveEntityDelta msg:
+					_messageHandler.HandleMcpeMoveEntityDelta(msg);
+					break;
+				case McpeSetScoreboardIdentity msg:
+					_messageHandler.HandleMcpeSetScoreboardIdentity(msg);
+					break;
+				case McpeUpdateSoftEnum msg:
+					_messageHandler.HandleMcpeUpdateSoftEnum(msg);
+					break;
+				case McpeNetworkStackLatency msg:
+					_messageHandler.HandleMcpeNetworkStackLatency(msg);
+					break;
+				case McpeScriptCustomEvent msg:
+					_messageHandler.HandleMcpeScriptCustomEvent(msg);
+					break;
+				case McpeSpawnParticleEffect msg:
+					_messageHandler.HandleMcpeSpawnParticleEffect(msg);
+					break;
+				case McpeAvailableEntityIdentifiers msg:
+					_messageHandler.HandleMcpeAvailableEntityIdentifiers(msg);
+					break;
+				case McpeLevelSoundEventV2 msg:
+					_messageHandler.HandleMcpeLevelSoundEventV2(msg);
+					break;
+				case McpeNetworkChunkPublisherUpdate msg:
+					_messageHandler.HandleMcpeNetworkChunkPublisherUpdate(msg);
+					break;
+				case McpeBiomeDefinitionList msg:
+					_messageHandler.HandleMcpeBiomeDefinitionList(msg);
+					break;
+				case McpeLevelSoundEvent msg:
+					_messageHandler.HandleMcpeLevelSoundEvent(msg);
+					break;
+				case McpeLevelEventGeneric msg:
+					_messageHandler.HandleMcpeLevelEventGeneric(msg);
+					break;
+				case McpeLecternUpdate msg:
+					_messageHandler.HandleMcpeLecternUpdate(msg);
+					break;
+				case McpeVideoStreamConnect msg:
+					_messageHandler.HandleMcpeVideoStreamConnect(msg);
+					break;
+				case McpeClientCacheStatus msg:
+					_messageHandler.HandleMcpeClientCacheStatus(msg);
+					break;
+				case McpeOnScreenTextureAnimation msg:
+					_messageHandler.HandleMcpeOnScreenTextureAnimation(msg);
+					break;
+				case McpeMapCreateLockedCopy msg:
+					_messageHandler.HandleMcpeMapCreateLockedCopy(msg);
+					break;
+				case McpeStructureTemplateDataExportRequest msg:
+					_messageHandler.HandleMcpeStructureTemplateDataExportRequest(msg);
+					break;
+				case McpeStructureTemplateDataExportResponse msg:
+					_messageHandler.HandleMcpeStructureTemplateDataExportResponse(msg);
+					break;
+				case McpeUpdateBlockProperties msg:
+					_messageHandler.HandleMcpeUpdateBlockProperties(msg);
+					break;
+				case McpeClientCacheBlobStatus msg:
+					_messageHandler.HandleMcpeClientCacheBlobStatus(msg);
+					break;
+				case McpeClientCacheMissResponse msg:
+					_messageHandler.HandleMcpeClientCacheMissResponse(msg);
+					break;
+				case McpeNetworkSettings msg:
+					_messageHandler.HandleMcpeNetworkSettings(msg);
+					break;
+				case McpeCreativeContent msg:
+					_messageHandler.HandleMcpeCreativeContent(msg);
+					break;
+				case McpePlayerEnchantOptions msg:
+					_messageHandler.HandleMcpePlayerEnchantOptions(msg);
+					break;
+				case McpeItemStackResponse msg:
+					_messageHandler.HandleMcpeItemStackResponse(msg);
+					break;
+				case McpeAlexEntityAnimation msg:
+					_messageHandler.HandleMcpeAlexEntityAnimation(msg);
+					break;
+				case FtlCreatePlayer msg:
+					_messageHandler.HandleFtlCreatePlayer(msg);
+					break;
+				default:
+					return false;
+			}
 
 			return true;
 		}
@@ -362,627 +622,343 @@ namespace MiNET.Net
 
 	public class PacketFactory
 	{
-		public static Packet Create(byte messageId, byte[] buffer, string ns)
+		public static ICustomPacketFactory CustomPacketFactory { get; set; } = null;
+
+		public static Packet Create(byte messageId, ReadOnlyMemory<byte> buffer, string ns)
 		{
-			Packet packet = null; 
+			Packet packet = CustomPacketFactory?.Create(messageId, buffer, ns);
+			if (packet != null) return packet;
+
 			if(ns == "raknet") 
 			{
 				switch (messageId)
 				{
 					case 0x00:
-						packet = ConnectedPing.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return ConnectedPing.CreateObject().Decode(buffer);
 					case 0x01:
-						packet = UnconnectedPing.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return UnconnectedPing.CreateObject().Decode(buffer);
 					case 0x03:
-						packet = ConnectedPong.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return ConnectedPong.CreateObject().Decode(buffer);
 					case 0x04:
-						packet = DetectLostConnections.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return DetectLostConnections.CreateObject().Decode(buffer);
 					case 0x1c:
-						packet = UnconnectedPong.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return UnconnectedPong.CreateObject().Decode(buffer);
 					case 0x05:
-						packet = OpenConnectionRequest1.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return OpenConnectionRequest1.CreateObject().Decode(buffer);
 					case 0x06:
-						packet = OpenConnectionReply1.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return OpenConnectionReply1.CreateObject().Decode(buffer);
 					case 0x07:
-						packet = OpenConnectionRequest2.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return OpenConnectionRequest2.CreateObject().Decode(buffer);
 					case 0x08:
-						packet = OpenConnectionReply2.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return OpenConnectionReply2.CreateObject().Decode(buffer);
 					case 0x09:
-						packet = ConnectionRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return ConnectionRequest.CreateObject().Decode(buffer);
 					case 0x10:
-						packet = ConnectionRequestAccepted.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return ConnectionRequestAccepted.CreateObject().Decode(buffer);
 					case 0x13:
-						packet = NewIncomingConnection.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return NewIncomingConnection.CreateObject().Decode(buffer);
 					case 0x14:
-						packet = NoFreeIncomingConnections.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return NoFreeIncomingConnections.CreateObject().Decode(buffer);
 					case 0x15:
-						packet = DisconnectionNotification.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return DisconnectionNotification.CreateObject().Decode(buffer);
 					case 0x17:
-						packet = ConnectionBanned.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return ConnectionBanned.CreateObject().Decode(buffer);
 					case 0x1A:
-						packet = IpRecentlyConnected.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return IpRecentlyConnected.CreateObject().Decode(buffer);
 					case 0xfe:
-						packet = McpeWrapper.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeWrapper.CreateObject().Decode(buffer);
 				}
 			} else if(ns == "ftl") 
 			{
 				switch (messageId)
 				{
 					case 0x01:
-						packet = FtlCreatePlayer.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return FtlCreatePlayer.CreateObject().Decode(buffer);
 				}
 			} else {
 
 				switch (messageId)
 				{
 					case 0x01:
-						packet = McpeLogin.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLogin.CreateObject().Decode(buffer);
 					case 0x02:
-						packet = McpePlayStatus.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlayStatus.CreateObject().Decode(buffer);
 					case 0x03:
-						packet = McpeServerToClientHandshake.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeServerToClientHandshake.CreateObject().Decode(buffer);
 					case 0x04:
-						packet = McpeClientToServerHandshake.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeClientToServerHandshake.CreateObject().Decode(buffer);
 					case 0x05:
-						packet = McpeDisconnect.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeDisconnect.CreateObject().Decode(buffer);
 					case 0x06:
-						packet = McpeResourcePacksInfo.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeResourcePacksInfo.CreateObject().Decode(buffer);
 					case 0x07:
-						packet = McpeResourcePackStack.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeResourcePackStack.CreateObject().Decode(buffer);
 					case 0x08:
-						packet = McpeResourcePackClientResponse.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeResourcePackClientResponse.CreateObject().Decode(buffer);
 					case 0x09:
-						packet = McpeText.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeText.CreateObject().Decode(buffer);
 					case 0x0a:
-						packet = McpeSetTime.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetTime.CreateObject().Decode(buffer);
 					case 0x0b:
-						packet = McpeStartGame.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeStartGame.CreateObject().Decode(buffer);
 					case 0x0c:
-						packet = McpeAddPlayer.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAddPlayer.CreateObject().Decode(buffer);
 					case 0x0d:
-						packet = McpeAddEntity.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAddEntity.CreateObject().Decode(buffer);
 					case 0x0e:
-						packet = McpeRemoveEntity.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeRemoveEntity.CreateObject().Decode(buffer);
 					case 0x0f:
-						packet = McpeAddItemEntity.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAddItemEntity.CreateObject().Decode(buffer);
 					case 0x11:
-						packet = McpeTakeItemEntity.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeTakeItemEntity.CreateObject().Decode(buffer);
 					case 0x12:
-						packet = McpeMoveEntity.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMoveEntity.CreateObject().Decode(buffer);
 					case 0x13:
-						packet = McpeMovePlayer.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMovePlayer.CreateObject().Decode(buffer);
 					case 0x14:
-						packet = McpeRiderJump.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeRiderJump.CreateObject().Decode(buffer);
 					case 0x15:
-						packet = McpeUpdateBlock.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateBlock.CreateObject().Decode(buffer);
 					case 0x16:
-						packet = McpeAddPainting.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAddPainting.CreateObject().Decode(buffer);
 					case 0x17:
-						packet = McpeTickSync.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeTickSync.CreateObject().Decode(buffer);
 					case 0x18:
-						packet = McpeLevelSoundEventOld.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLevelSoundEventOld.CreateObject().Decode(buffer);
 					case 0x19:
-						packet = McpeLevelEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLevelEvent.CreateObject().Decode(buffer);
 					case 0x1a:
-						packet = McpeBlockEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeBlockEvent.CreateObject().Decode(buffer);
 					case 0x1b:
-						packet = McpeEntityEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeEntityEvent.CreateObject().Decode(buffer);
 					case 0x1c:
-						packet = McpeMobEffect.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMobEffect.CreateObject().Decode(buffer);
 					case 0x1d:
-						packet = McpeUpdateAttributes.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateAttributes.CreateObject().Decode(buffer);
 					case 0x1e:
-						packet = McpeInventoryTransaction.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeInventoryTransaction.CreateObject().Decode(buffer);
 					case 0x1f:
-						packet = McpeMobEquipment.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMobEquipment.CreateObject().Decode(buffer);
 					case 0x20:
-						packet = McpeMobArmorEquipment.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMobArmorEquipment.CreateObject().Decode(buffer);
 					case 0x21:
-						packet = McpeInteract.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeInteract.CreateObject().Decode(buffer);
 					case 0x22:
-						packet = McpeBlockPickRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeBlockPickRequest.CreateObject().Decode(buffer);
 					case 0x23:
-						packet = McpeEntityPickRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeEntityPickRequest.CreateObject().Decode(buffer);
 					case 0x24:
-						packet = McpePlayerAction.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlayerAction.CreateObject().Decode(buffer);
 					case 0x25:
-						packet = McpeEntityFall.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeEntityFall.CreateObject().Decode(buffer);
 					case 0x26:
-						packet = McpeHurtArmor.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeHurtArmor.CreateObject().Decode(buffer);
 					case 0x27:
-						packet = McpeSetEntityData.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetEntityData.CreateObject().Decode(buffer);
 					case 0x28:
-						packet = McpeSetEntityMotion.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetEntityMotion.CreateObject().Decode(buffer);
 					case 0x29:
-						packet = McpeSetEntityLink.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetEntityLink.CreateObject().Decode(buffer);
 					case 0x2a:
-						packet = McpeSetHealth.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetHealth.CreateObject().Decode(buffer);
 					case 0x2b:
-						packet = McpeSetSpawnPosition.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetSpawnPosition.CreateObject().Decode(buffer);
 					case 0x2c:
-						packet = McpeAnimate.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAnimate.CreateObject().Decode(buffer);
 					case 0x2d:
-						packet = McpeRespawn.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeRespawn.CreateObject().Decode(buffer);
 					case 0x2e:
-						packet = McpeContainerOpen.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeContainerOpen.CreateObject().Decode(buffer);
 					case 0x2f:
-						packet = McpeContainerClose.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeContainerClose.CreateObject().Decode(buffer);
 					case 0x30:
-						packet = McpePlayerHotbar.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlayerHotbar.CreateObject().Decode(buffer);
 					case 0x31:
-						packet = McpeInventoryContent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeInventoryContent.CreateObject().Decode(buffer);
 					case 0x32:
-						packet = McpeInventorySlot.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeInventorySlot.CreateObject().Decode(buffer);
 					case 0x33:
-						packet = McpeContainerSetData.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeContainerSetData.CreateObject().Decode(buffer);
 					case 0x34:
-						packet = McpeCraftingData.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeCraftingData.CreateObject().Decode(buffer);
 					case 0x35:
-						packet = McpeCraftingEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeCraftingEvent.CreateObject().Decode(buffer);
 					case 0x36:
-						packet = McpeGuiDataPickItem.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeGuiDataPickItem.CreateObject().Decode(buffer);
 					case 0x37:
-						packet = McpeAdventureSettings.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAdventureSettings.CreateObject().Decode(buffer);
 					case 0x38:
-						packet = McpeBlockEntityData.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeBlockEntityData.CreateObject().Decode(buffer);
 					case 0x39:
-						packet = McpePlayerInput.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlayerInput.CreateObject().Decode(buffer);
 					case 0x3a:
-						packet = McpeLevelChunk.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLevelChunk.CreateObject().Decode(buffer);
 					case 0x3b:
-						packet = McpeSetCommandsEnabled.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetCommandsEnabled.CreateObject().Decode(buffer);
 					case 0x3c:
-						packet = McpeSetDifficulty.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetDifficulty.CreateObject().Decode(buffer);
 					case 0x3d:
-						packet = McpeChangeDimension.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeChangeDimension.CreateObject().Decode(buffer);
 					case 0x3e:
-						packet = McpeSetPlayerGameType.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetPlayerGameType.CreateObject().Decode(buffer);
 					case 0x3f:
-						packet = McpePlayerList.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlayerList.CreateObject().Decode(buffer);
 					case 0x40:
-						packet = McpeSimpleEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSimpleEvent.CreateObject().Decode(buffer);
 					case 0x41:
-						packet = McpeTelemetryEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeTelemetryEvent.CreateObject().Decode(buffer);
 					case 0x42:
-						packet = McpeSpawnExperienceOrb.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSpawnExperienceOrb.CreateObject().Decode(buffer);
 					case 0x43:
-						packet = McpeClientboundMapItemData.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeClientboundMapItemData.CreateObject().Decode(buffer);
 					case 0x44:
-						packet = McpeMapInfoRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMapInfoRequest.CreateObject().Decode(buffer);
 					case 0x45:
-						packet = McpeRequestChunkRadius.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeRequestChunkRadius.CreateObject().Decode(buffer);
 					case 0x46:
-						packet = McpeChunkRadiusUpdate.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeChunkRadiusUpdate.CreateObject().Decode(buffer);
 					case 0x47:
-						packet = McpeItemFrameDropItem.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeItemFrameDropItem.CreateObject().Decode(buffer);
 					case 0x48:
-						packet = McpeGameRulesChanged.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeGameRulesChanged.CreateObject().Decode(buffer);
 					case 0x49:
-						packet = McpeCamera.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeCamera.CreateObject().Decode(buffer);
 					case 0x4a:
-						packet = McpeBossEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeBossEvent.CreateObject().Decode(buffer);
 					case 0x4b:
-						packet = McpeShowCredits.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeShowCredits.CreateObject().Decode(buffer);
 					case 0x4c:
-						packet = McpeAvailableCommands.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAvailableCommands.CreateObject().Decode(buffer);
 					case 0x4d:
-						packet = McpeCommandRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeCommandRequest.CreateObject().Decode(buffer);
 					case 0x4e:
-						packet = McpeCommandBlockUpdate.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeCommandBlockUpdate.CreateObject().Decode(buffer);
 					case 0x4f:
-						packet = McpeCommandOutput.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeCommandOutput.CreateObject().Decode(buffer);
 					case 0x50:
-						packet = McpeUpdateTrade.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateTrade.CreateObject().Decode(buffer);
 					case 0x51:
-						packet = McpeUpdateEquipment.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateEquipment.CreateObject().Decode(buffer);
 					case 0x52:
-						packet = McpeResourcePackDataInfo.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeResourcePackDataInfo.CreateObject().Decode(buffer);
 					case 0x53:
-						packet = McpeResourcePackChunkData.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeResourcePackChunkData.CreateObject().Decode(buffer);
 					case 0x54:
-						packet = McpeResourcePackChunkRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeResourcePackChunkRequest.CreateObject().Decode(buffer);
 					case 0x55:
-						packet = McpeTransfer.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeTransfer.CreateObject().Decode(buffer);
 					case 0x56:
-						packet = McpePlaySound.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlaySound.CreateObject().Decode(buffer);
 					case 0x57:
-						packet = McpeStopSound.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeStopSound.CreateObject().Decode(buffer);
 					case 0x58:
-						packet = McpeSetTitle.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetTitle.CreateObject().Decode(buffer);
 					case 0x59:
-						packet = McpeAddBehaviorTree.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAddBehaviorTree.CreateObject().Decode(buffer);
 					case 0x5a:
-						packet = McpeStructureBlockUpdate.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeStructureBlockUpdate.CreateObject().Decode(buffer);
 					case 0x5b:
-						packet = McpeShowStoreOffer.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeShowStoreOffer.CreateObject().Decode(buffer);
 					case 0x5c:
-						packet = McpePurchaseReceipt.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePurchaseReceipt.CreateObject().Decode(buffer);
 					case 0x5d:
-						packet = McpePlayerSkin.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePlayerSkin.CreateObject().Decode(buffer);
 					case 0x5e:
-						packet = McpeSubClientLogin.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSubClientLogin.CreateObject().Decode(buffer);
 					case 0x5f:
-						packet = McpeInitiateWebSocketConnection.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeInitiateWebSocketConnection.CreateObject().Decode(buffer);
 					case 0x60:
-						packet = McpeSetLastHurtBy.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetLastHurtBy.CreateObject().Decode(buffer);
 					case 0x61:
-						packet = McpeBookEdit.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeBookEdit.CreateObject().Decode(buffer);
 					case 0x62:
-						packet = McpeNpcRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeNpcRequest.CreateObject().Decode(buffer);
 					case 0x63:
-						packet = McpePhotoTransfer.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpePhotoTransfer.CreateObject().Decode(buffer);
 					case 0x64:
-						packet = McpeModalFormRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeModalFormRequest.CreateObject().Decode(buffer);
 					case 0x65:
-						packet = McpeModalFormResponse.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeModalFormResponse.CreateObject().Decode(buffer);
 					case 0x66:
-						packet = McpeServerSettingsRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeServerSettingsRequest.CreateObject().Decode(buffer);
 					case 0x67:
-						packet = McpeServerSettingsResponse.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeServerSettingsResponse.CreateObject().Decode(buffer);
 					case 0x68:
-						packet = McpeShowProfile.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeShowProfile.CreateObject().Decode(buffer);
 					case 0x69:
-						packet = McpeSetDefaultGameType.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetDefaultGameType.CreateObject().Decode(buffer);
 					case 0x6a:
-						packet = McpeRemoveObjective.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeRemoveObjective.CreateObject().Decode(buffer);
 					case 0x6b:
-						packet = McpeSetDisplayObjective.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetDisplayObjective.CreateObject().Decode(buffer);
 					case 0x6c:
-						packet = McpeSetScore.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetScore.CreateObject().Decode(buffer);
 					case 0x6d:
-						packet = McpeLabTable.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLabTable.CreateObject().Decode(buffer);
 					case 0x6e:
-						packet = McpeUpdateBlockSynced.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateBlockSynced.CreateObject().Decode(buffer);
 					case 0x6f:
-						packet = McpeMoveEntityDelta.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMoveEntityDelta.CreateObject().Decode(buffer);
 					case 0x70:
-						packet = McpeSetScoreboardIdentityPacket.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetScoreboardIdentity.CreateObject().Decode(buffer);
 					case 0x71:
-						packet = McpeSetLocalPlayerAsInitializedPacket.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSetLocalPlayerAsInitialized.CreateObject().Decode(buffer);
 					case 0x72:
-						packet = McpeUpdateSoftEnumPacket.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateSoftEnum.CreateObject().Decode(buffer);
 					case 0x73:
-						packet = McpeNetworkStackLatencyPacket.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeNetworkStackLatency.CreateObject().Decode(buffer);
 					case 0x75:
-						packet = McpeScriptCustomEventPacket.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeScriptCustomEvent.CreateObject().Decode(buffer);
 					case 0x76:
-						packet = McpeSpawnParticleEffect.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeSpawnParticleEffect.CreateObject().Decode(buffer);
 					case 0x77:
-						packet = McpeAvailableEntityIdentifiers.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeAvailableEntityIdentifiers.CreateObject().Decode(buffer);
 					case 0x78:
-						packet = McpeLevelSoundEventV2.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLevelSoundEventV2.CreateObject().Decode(buffer);
 					case 0x79:
-						packet = McpeNetworkChunkPublisherUpdate.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeNetworkChunkPublisherUpdate.CreateObject().Decode(buffer);
 					case 0x7a:
-						packet = McpeBiomeDefinitionList.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeBiomeDefinitionList.CreateObject().Decode(buffer);
 					case 0x7b:
-						packet = McpeLevelSoundEvent.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLevelSoundEvent.CreateObject().Decode(buffer);
 					case 0x7c:
-						packet = McpeLevelEventGeneric.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLevelEventGeneric.CreateObject().Decode(buffer);
 					case 0x7d:
-						packet = McpeLecternUpdate.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeLecternUpdate.CreateObject().Decode(buffer);
 					case 0x7e:
-						packet = McpeVideoStreamConnect.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeVideoStreamConnect.CreateObject().Decode(buffer);
 					case 0x81:
-						packet = McpeClientCacheStatus.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeClientCacheStatus.CreateObject().Decode(buffer);
 					case 0x82:
-						packet = McpeOnScreenTextureAnimation.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeOnScreenTextureAnimation.CreateObject().Decode(buffer);
 					case 0x83:
-						packet = McpeMapCreateLockedCopy.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeMapCreateLockedCopy.CreateObject().Decode(buffer);
 					case 0x84:
-						packet = McpeStructureTemplateDataExportRequest.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeStructureTemplateDataExportRequest.CreateObject().Decode(buffer);
 					case 0x85:
-						packet = McpeStructureTemplateDataExportResponse.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeStructureTemplateDataExportResponse.CreateObject().Decode(buffer);
 					case 0x86:
-						packet = McpeUpdateBlockProperties.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeUpdateBlockProperties.CreateObject().Decode(buffer);
 					case 0x87:
-						packet = McpeClientCacheBlobStatus.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeClientCacheBlobStatus.CreateObject().Decode(buffer);
 					case 0x88:
-						packet = McpeClientCacheMissResponse.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeClientCacheMissResponse.CreateObject().Decode(buffer);
 					case 0x8f:
-						packet = McpeNetworkSettingsPacket.CreateObject();
-						packet.Decode(buffer);
-						return packet;
+						return McpeNetworkSettings.CreateObject().Decode(buffer);
+					case 0x91:
+						return McpeCreativeContent.CreateObject().Decode(buffer);
+					case 0x92:
+						return McpePlayerEnchantOptions.CreateObject().Decode(buffer);
+					case 0x93:
+						return McpeItemStackRequest.CreateObject().Decode(buffer);
+					case 0x94:
+						return McpeItemStackResponse.CreateObject().Decode(buffer);
+					case 0x97:
+						return McpeUpdatePlayerGameType.CreateObject().Decode(buffer);
+					case 0x9c:
+						return McpePacketViolationWarning.CreateObject().Decode(buffer);
+					case 0xe0:
+						return McpeAlexEntityAnimation.CreateObject().Decode(buffer);
 				}
 			}
 
@@ -2445,6 +2421,8 @@ namespace MiNET.Net
 		public Vector3 spawn; // = null;
 		public Vector2 rotation; // = null;
 		public int seed; // = null;
+		public short biomeType; // = null;
+		public string biomeName; // = null;
 		public int dimension; // = null;
 		public int generator; // = null;
 		public int gamemode; // = null;
@@ -2456,6 +2434,7 @@ namespace MiNET.Net
 		public int dayCycleStopTime; // = null;
 		public int eduOffer; // = null;
 		public bool hasEduFeaturesEnabled; // = null;
+		public string eduProductUuid; // = null;
 		public float rainLevel; // = null;
 		public float lightningLevel; // = null;
 		public bool hasConfirmedPlatformLockedContent; // = null;
@@ -2478,6 +2457,10 @@ namespace MiNET.Net
 		public bool isWorldTemplateOptionLocked; // = null;
 		public bool onlySpawnV1Villagers; // = null;
 		public string gameVersion; // = null;
+		public int limitedWorldWidth; // = null;
+		public int limitedWorldLength; // = null;
+		public bool isNewNether; // = null;
+		public bool experimentalGameplayOverride; // = null;
 		public string levelId; // = null;
 		public string worldName; // = null;
 		public string premiumWorldTemplateId; // = null;
@@ -2488,6 +2471,7 @@ namespace MiNET.Net
 		public BlockPalette blockPalette; // = null;
 		public Itemstates itemstates; // = null;
 		public string multiplayerCorrelationId; // = null;
+		public bool enableNewInventorySystem; // = null;
 
 		public McpeStartGame()
 		{
@@ -2507,6 +2491,8 @@ namespace MiNET.Net
 			Write(spawn);
 			Write(rotation);
 			WriteSignedVarInt(seed);
+			Write(biomeType);
+			Write(biomeName);
 			WriteSignedVarInt(dimension);
 			WriteSignedVarInt(generator);
 			WriteSignedVarInt(gamemode);
@@ -2518,6 +2504,7 @@ namespace MiNET.Net
 			WriteSignedVarInt(dayCycleStopTime);
 			WriteSignedVarInt(eduOffer);
 			Write(hasEduFeaturesEnabled);
+			Write(eduProductUuid);
 			Write(rainLevel);
 			Write(lightningLevel);
 			Write(hasConfirmedPlatformLockedContent);
@@ -2540,6 +2527,10 @@ namespace MiNET.Net
 			Write(isWorldTemplateOptionLocked);
 			Write(onlySpawnV1Villagers);
 			Write(gameVersion);
+			Write(limitedWorldWidth);
+			Write(limitedWorldLength);
+			Write(isNewNether);
+			Write(experimentalGameplayOverride);
 			Write(levelId);
 			Write(worldName);
 			Write(premiumWorldTemplateId);
@@ -2550,6 +2541,7 @@ namespace MiNET.Net
 			Write(blockPalette);
 			Write(itemstates);
 			Write(multiplayerCorrelationId);
+			Write(enableNewInventorySystem);
 
 			AfterEncode();
 		}
@@ -2569,6 +2561,8 @@ namespace MiNET.Net
 			spawn = ReadVector3();
 			rotation = ReadVector2();
 			seed = ReadSignedVarInt();
+			biomeType = ReadShort();
+			biomeName = ReadString();
 			dimension = ReadSignedVarInt();
 			generator = ReadSignedVarInt();
 			gamemode = ReadSignedVarInt();
@@ -2580,6 +2574,7 @@ namespace MiNET.Net
 			dayCycleStopTime = ReadSignedVarInt();
 			eduOffer = ReadSignedVarInt();
 			hasEduFeaturesEnabled = ReadBool();
+			eduProductUuid = ReadString();
 			rainLevel = ReadFloat();
 			lightningLevel = ReadFloat();
 			hasConfirmedPlatformLockedContent = ReadBool();
@@ -2602,6 +2597,10 @@ namespace MiNET.Net
 			isWorldTemplateOptionLocked = ReadBool();
 			onlySpawnV1Villagers = ReadBool();
 			gameVersion = ReadString();
+			limitedWorldWidth = ReadInt();
+			limitedWorldLength = ReadInt();
+			isNewNether = ReadBool();
+			experimentalGameplayOverride = ReadBool();
 			levelId = ReadString();
 			worldName = ReadString();
 			premiumWorldTemplateId = ReadString();
@@ -2612,6 +2611,7 @@ namespace MiNET.Net
 			blockPalette = ReadBlockPalette();
 			itemstates = ReadItemstates();
 			multiplayerCorrelationId = ReadString();
+			enableNewInventorySystem = ReadBool();
 
 			AfterDecode();
 		}
@@ -2629,6 +2629,8 @@ namespace MiNET.Net
 			spawn=default(Vector3);
 			rotation=default(Vector2);
 			seed=default(int);
+			biomeType=default(short);
+			biomeName=default(string);
 			dimension=default(int);
 			generator=default(int);
 			gamemode=default(int);
@@ -2640,6 +2642,7 @@ namespace MiNET.Net
 			dayCycleStopTime=default(int);
 			eduOffer=default(int);
 			hasEduFeaturesEnabled=default(bool);
+			eduProductUuid=default(string);
 			rainLevel=default(float);
 			lightningLevel=default(float);
 			hasConfirmedPlatformLockedContent=default(bool);
@@ -2662,6 +2665,10 @@ namespace MiNET.Net
 			isWorldTemplateOptionLocked=default(bool);
 			onlySpawnV1Villagers=default(bool);
 			gameVersion=default(string);
+			limitedWorldWidth=default(int);
+			limitedWorldLength=default(int);
+			isNewNether=default(bool);
+			experimentalGameplayOverride=default(bool);
 			levelId=default(string);
 			worldName=default(string);
 			premiumWorldTemplateId=default(string);
@@ -2672,6 +2679,7 @@ namespace MiNET.Net
 			blockPalette=default(BlockPalette);
 			itemstates=default(Itemstates);
 			multiplayerCorrelationId=default(string);
+			enableNewInventorySystem=default(bool);
 		}
 
 	}
@@ -4647,7 +4655,8 @@ namespace MiNET.Net
 
 		public int spawnType; // = null;
 		public BlockCoordinates coordinates; // = null;
-		public bool forced; // = null;
+		public int dimension; // = null;
+		public BlockCoordinates unknownCoordinates; // = null;
 
 		public McpeSetSpawnPosition()
 		{
@@ -4663,7 +4672,8 @@ namespace MiNET.Net
 
 			WriteSignedVarInt(spawnType);
 			Write(coordinates);
-			Write(forced);
+			WriteSignedVarInt(dimension);
+			Write(unknownCoordinates);
 
 			AfterEncode();
 		}
@@ -4679,7 +4689,8 @@ namespace MiNET.Net
 
 			spawnType = ReadSignedVarInt();
 			coordinates = ReadBlockCoordinates();
-			forced = ReadBool();
+			dimension = ReadSignedVarInt();
+			unknownCoordinates = ReadBlockCoordinates();
 
 			AfterDecode();
 		}
@@ -4693,7 +4704,8 @@ namespace MiNET.Net
 
 			spawnType=default(int);
 			coordinates=default(BlockCoordinates);
-			forced=default(bool);
+			dimension=default(int);
+			unknownCoordinates=default(BlockCoordinates);
 		}
 
 	}
@@ -5041,6 +5053,7 @@ namespace MiNET.Net
 
 		public uint inventoryId; // = null;
 		public uint slot; // = null;
+		public int uniqueid; // = null;
 		public Item item; // = null;
 
 		public McpeInventorySlot()
@@ -5057,6 +5070,7 @@ namespace MiNET.Net
 
 			WriteUnsignedVarInt(inventoryId);
 			WriteUnsignedVarInt(slot);
+			WriteSignedVarInt(uniqueid);
 			Write(item);
 
 			AfterEncode();
@@ -5073,6 +5087,7 @@ namespace MiNET.Net
 
 			inventoryId = ReadUnsignedVarInt();
 			slot = ReadUnsignedVarInt();
+			uniqueid = ReadSignedVarInt();
 			item = ReadItem();
 
 			AfterDecode();
@@ -5087,6 +5102,7 @@ namespace MiNET.Net
 
 			inventoryId=default(uint);
 			slot=default(uint);
+			uniqueid=default(int);
 			item=default(Item);
 		}
 
@@ -5514,7 +5530,6 @@ namespace MiNET.Net
 		public int chunkZ; // = null;
 		public uint subChunkCount; // = null;
 		public bool cacheEnabled; // = null;
-		public byte[] chunkData; // = null;
 
 		public McpeLevelChunk()
 		{
@@ -5532,7 +5547,6 @@ namespace MiNET.Net
 			WriteSignedVarInt(chunkZ);
 			WriteUnsignedVarInt(subChunkCount);
 			Write(cacheEnabled);
-			WriteByteArray(chunkData);
 
 			AfterEncode();
 		}
@@ -5550,7 +5564,6 @@ namespace MiNET.Net
 			chunkZ = ReadSignedVarInt();
 			subChunkCount = ReadUnsignedVarInt();
 			cacheEnabled = ReadBool();
-			chunkData = ReadByteArray();
 
 			AfterDecode();
 		}
@@ -5566,7 +5579,6 @@ namespace MiNET.Net
 			chunkZ=default(int);
 			subChunkCount=default(uint);
 			cacheEnabled=default(bool);
-			chunkData=default(byte[]);
 		}
 
 	}
@@ -7385,6 +7397,7 @@ namespace MiNET.Net
 		public Skin skin; // = null;
 		public string skinName; // = null;
 		public string oldSkinName; // = null;
+		public bool isVerified; // = null;
 
 		public McpePlayerSkin()
 		{
@@ -7402,6 +7415,7 @@ namespace MiNET.Net
 			Write(skin);
 			Write(skinName);
 			Write(oldSkinName);
+			Write(isVerified);
 
 			AfterEncode();
 		}
@@ -7419,6 +7433,7 @@ namespace MiNET.Net
 			skin = ReadSkin();
 			skinName = ReadString();
 			oldSkinName = ReadString();
+			isVerified = ReadBool();
 
 			AfterDecode();
 		}
@@ -7434,6 +7449,7 @@ namespace MiNET.Net
 			skin=default(Skin);
 			skinName=default(string);
 			oldSkinName=default(string);
+			isVerified=default(bool);
 		}
 
 	}
@@ -8389,7 +8405,7 @@ namespace MiNET.Net
 
 	}
 
-	public partial class McpeSetScoreboardIdentityPacket : Packet<McpeSetScoreboardIdentityPacket>
+	public partial class McpeSetScoreboardIdentity : Packet<McpeSetScoreboardIdentity>
 	{
 		public enum Operations
 		{
@@ -8399,7 +8415,7 @@ namespace MiNET.Net
 
 		public ScoreboardIdentityEntries entries; // = null;
 
-		public McpeSetScoreboardIdentityPacket()
+		public McpeSetScoreboardIdentity()
 		{
 			Id = 0x70;
 			IsMcpe = true;
@@ -8442,12 +8458,12 @@ namespace MiNET.Net
 
 	}
 
-	public partial class McpeSetLocalPlayerAsInitializedPacket : Packet<McpeSetLocalPlayerAsInitializedPacket>
+	public partial class McpeSetLocalPlayerAsInitialized : Packet<McpeSetLocalPlayerAsInitialized>
 	{
 
 		public long runtimeEntityId; // = null;
 
-		public McpeSetLocalPlayerAsInitializedPacket()
+		public McpeSetLocalPlayerAsInitialized()
 		{
 			Id = 0x71;
 			IsMcpe = true;
@@ -8490,11 +8506,11 @@ namespace MiNET.Net
 
 	}
 
-	public partial class McpeUpdateSoftEnumPacket : Packet<McpeUpdateSoftEnumPacket>
+	public partial class McpeUpdateSoftEnum : Packet<McpeUpdateSoftEnum>
 	{
 
 
-		public McpeUpdateSoftEnumPacket()
+		public McpeUpdateSoftEnum()
 		{
 			Id = 0x72;
 			IsMcpe = true;
@@ -8534,13 +8550,13 @@ namespace MiNET.Net
 
 	}
 
-	public partial class McpeNetworkStackLatencyPacket : Packet<McpeNetworkStackLatencyPacket>
+	public partial class McpeNetworkStackLatency : Packet<McpeNetworkStackLatency>
 	{
 
 		public ulong timestamp; // = null;
 		public byte unknownFlag; // = null;
 
-		public McpeNetworkStackLatencyPacket()
+		public McpeNetworkStackLatency()
 		{
 			Id = 0x73;
 			IsMcpe = true;
@@ -8586,13 +8602,13 @@ namespace MiNET.Net
 
 	}
 
-	public partial class McpeScriptCustomEventPacket : Packet<McpeScriptCustomEventPacket>
+	public partial class McpeScriptCustomEvent : Packet<McpeScriptCustomEvent>
 	{
 
 		public string eventName; // = null;
 		public string eventData; // = null;
 
-		public McpeScriptCustomEventPacket()
+		public McpeScriptCustomEvent()
 		{
 			Id = 0x75;
 			IsMcpe = true;
@@ -9361,6 +9377,7 @@ namespace MiNET.Net
 	public partial class McpeUpdateBlockProperties : Packet<McpeUpdateBlockProperties>
 	{
 
+		public Nbt namedtag; // = null;
 
 		public McpeUpdateBlockProperties()
 		{
@@ -9374,6 +9391,7 @@ namespace MiNET.Net
 
 			BeforeEncode();
 
+			Write(namedtag);
 
 			AfterEncode();
 		}
@@ -9387,6 +9405,7 @@ namespace MiNET.Net
 
 			BeforeDecode();
 
+			namedtag = ReadNbt();
 
 			AfterDecode();
 		}
@@ -9398,6 +9417,7 @@ namespace MiNET.Net
 		{
 			base.ResetPacket();
 
+			namedtag=default(Nbt);
 		}
 
 	}
@@ -9490,7 +9510,7 @@ namespace MiNET.Net
 
 	}
 
-	public partial class McpeNetworkSettingsPacket : Packet<McpeNetworkSettingsPacket>
+	public partial class McpeNetworkSettings : Packet<McpeNetworkSettings>
 	{
 		public enum Compression
 		{
@@ -9498,9 +9518,10 @@ namespace MiNET.Net
 			Everything = 1,
 		}
 
-		public short compressionThreshold; // = null;
+		public byte unknown; // = null;
+		public byte compressionThreshold; // = null;
 
-		public McpeNetworkSettingsPacket()
+		public McpeNetworkSettings()
 		{
 			Id = 0x8f;
 			IsMcpe = true;
@@ -9512,6 +9533,7 @@ namespace MiNET.Net
 
 			BeforeEncode();
 
+			Write(unknown);
 			Write(compressionThreshold);
 
 			AfterEncode();
@@ -9526,7 +9548,8 @@ namespace MiNET.Net
 
 			BeforeDecode();
 
-			compressionThreshold = ReadShort();
+			unknown = ReadByte();
+			compressionThreshold = ReadByte();
 
 			AfterDecode();
 		}
@@ -9538,20 +9561,21 @@ namespace MiNET.Net
 		{
 			base.ResetPacket();
 
-			compressionThreshold=default(short);
+			unknown=default(byte);
+			compressionThreshold=default(byte);
 		}
 
 	}
 
-	public partial class McpeWrapper : Packet<McpeWrapper>
+	public partial class McpeCreativeContent : Packet<McpeCreativeContent>
 	{
 
-		public byte[] payload; // = null;
+		public ItemStacks input; // = null;
 
-		public McpeWrapper()
+		public McpeCreativeContent()
 		{
-			Id = 0xfe;
-			IsMcpe = false;
+			Id = 0x91;
+			IsMcpe = true;
 		}
 
 		protected override void EncodePacket()
@@ -9560,7 +9584,7 @@ namespace MiNET.Net
 
 			BeforeEncode();
 
-			Write(payload);
+			Write(input);
 
 			AfterEncode();
 		}
@@ -9574,7 +9598,7 @@ namespace MiNET.Net
 
 			BeforeDecode();
 
-			payload = ReadBytes(0, true);
+			input = ReadItemStacks();
 
 			AfterDecode();
 		}
@@ -9586,7 +9610,372 @@ namespace MiNET.Net
 		{
 			base.ResetPacket();
 
-			payload=default(byte[]);
+			input=default(ItemStacks);
+		}
+
+	}
+
+	public partial class McpePlayerEnchantOptions : Packet<McpePlayerEnchantOptions>
+	{
+
+		public EnchantOptions enchantOptions; // = null;
+
+		public McpePlayerEnchantOptions()
+		{
+			Id = 0x92;
+			IsMcpe = true;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+			Write(enchantOptions);
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+			enchantOptions = ReadEnchantOptions();
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
+			enchantOptions=default(EnchantOptions);
+		}
+
+	}
+
+	public partial class McpeItemStackRequest : Packet<McpeItemStackRequest>
+	{
+		public enum ActionType
+		{
+			Take = 0,
+			Place = 1,
+			Swap = 2,
+			Drop = 3,
+			Destroy = 4,
+			Consume = 5,
+			Create = 6,
+			LabTableCombine = 7,
+			BeaconPayment = 8,
+			CraftRecipe = 9,
+			CraftRecipeAuto = 10,
+			CraftCreative = 11,
+			CraftNotImplementedDeprecated = 12,
+			CraftResultsDeprecated = 13,
+		}
+
+		public ItemStackRequests requests; // = null;
+
+		public McpeItemStackRequest()
+		{
+			Id = 0x93;
+			IsMcpe = true;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+			Write(requests);
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+			requests = ReadItemStackRequests();
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
+			requests=default(ItemStackRequests);
+		}
+
+	}
+
+	public partial class McpeItemStackResponse : Packet<McpeItemStackResponse>
+	{
+
+		public ItemStackResponses responses; // = null;
+
+		public McpeItemStackResponse()
+		{
+			Id = 0x94;
+			IsMcpe = true;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+			Write(responses);
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+			responses = ReadItemStackResponses();
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
+			responses=default(ItemStackResponses);
+		}
+
+	}
+
+	public partial class McpeUpdatePlayerGameType : Packet<McpeUpdatePlayerGameType>
+	{
+
+
+		public McpeUpdatePlayerGameType()
+		{
+			Id = 0x97;
+			IsMcpe = true;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
+		}
+
+	}
+
+	public partial class McpePacketViolationWarning : Packet<McpePacketViolationWarning>
+	{
+
+		public int violationType; // = null;
+		public int severity; // = null;
+		public int packetId; // = null;
+		public string reason; // = null;
+
+		public McpePacketViolationWarning()
+		{
+			Id = 0x9c;
+			IsMcpe = true;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+			WriteSignedVarInt(violationType);
+			WriteSignedVarInt(severity);
+			WriteSignedVarInt(packetId);
+			Write(reason);
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+			violationType = ReadSignedVarInt();
+			severity = ReadSignedVarInt();
+			packetId = ReadSignedVarInt();
+			reason = ReadString();
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
+			violationType=default(int);
+			severity=default(int);
+			packetId=default(int);
+			reason=default(string);
+		}
+
+	}
+
+	public partial class McpeAlexEntityAnimation : Packet<McpeAlexEntityAnimation>
+	{
+
+		public long runtimeEntityId; // = null;
+		public string boneId; // = null;
+		public AnimationKey[] keys; // = null;
+
+		public McpeAlexEntityAnimation()
+		{
+			Id = 0xe0;
+			IsMcpe = true;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+			WriteUnsignedVarLong(runtimeEntityId);
+			Write(boneId);
+			Write(keys);
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+			runtimeEntityId = ReadUnsignedVarLong();
+			boneId = ReadString();
+			keys = ReadAnimationKeys();
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
+			runtimeEntityId=default(long);
+			boneId=default(string);
+			keys=default(AnimationKey[]);
+		}
+
+	}
+
+	public partial class McpeWrapper : Packet<McpeWrapper>
+	{
+
+
+		public McpeWrapper()
+		{
+			Id = 0xfe;
+			IsMcpe = false;
+		}
+
+		protected override void EncodePacket()
+		{
+			base.EncodePacket();
+
+			BeforeEncode();
+
+
+			AfterEncode();
+		}
+
+		partial void BeforeEncode();
+		partial void AfterEncode();
+
+		protected override void DecodePacket()
+		{
+			base.DecodePacket();
+
+			BeforeDecode();
+
+
+			AfterDecode();
+		}
+
+		partial void BeforeDecode();
+		partial void AfterDecode();
+
+		protected override void ResetPacket()
+		{
+			base.ResetPacket();
+
 		}
 
 	}

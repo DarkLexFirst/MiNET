@@ -30,9 +30,157 @@ using MiNET.Net;
 
 namespace MiNET.Utils
 {
+	public class ItemStackRequests : List<ItemStackActionList>
+	{
+	}
+
+	public class ItemStackActionList : List<ItemStackAction>
+	{
+		public int RequestId { get; set; }
+	}
+
+	public abstract class ItemStackAction
+	{
+	}
+
+	public class StackRequestSlotInfo 
+	{
+		public byte ContainerId { get; set; }
+		public byte Slot { get; set; }
+		public int StackNetworkId  { get; set; }
+
+		public StackRequestSlotInfo Read(MemoryStreamReader reader)
+		{
+			ContainerId = (byte) reader.ReadByte();
+			Slot = (byte) reader.ReadByte();
+			StackNetworkId = VarInt.ReadSInt32(reader);
+
+			return this;
+		}
+	}
+
+	public class TakeAction : ItemStackAction
+	{
+		public byte Count { get; set; }
+		public StackRequestSlotInfo Source { get; set; }
+		public StackRequestSlotInfo Destination { get; set; }
+	}
+
+	public class PlaceAction : ItemStackAction
+	{
+		public byte Count { get; set; }
+		public StackRequestSlotInfo Source { get; set; }
+		public StackRequestSlotInfo Destination { get; set; }
+	}
+
+	public class SwapAction : ItemStackAction
+	{
+		public StackRequestSlotInfo Source { get; set; }
+		public StackRequestSlotInfo Destination { get; set; }
+	}
+
+	public class DropAction : ItemStackAction
+	{
+		public byte Count { get; set; }
+		public StackRequestSlotInfo Source { get; set; }
+		public bool Randomly { get; set; }
+	}
+
+	public class DestroyAction : ItemStackAction
+	{
+		public byte Count { get; set; }
+		public StackRequestSlotInfo Source { get; set; }
+	}
+
+	public class ConsumeAction : ItemStackAction
+	{
+		public byte Count { get; set; }
+		public StackRequestSlotInfo Source { get; set; }
+	}
+
+	public class CreateAction : ItemStackAction
+	{
+		public byte ResultSlot { get; set; }
+	}
+
+	public class LabTableCombineAction : ItemStackAction
+	{
+	}
+
+	public class BeaconPaymentAction : ItemStackAction
+	{
+		public int PrimaryEffect { get; set; }
+		public int SecondaryEffect { get; set; }
+	}
+
+	public class CraftAction : ItemStackAction
+	{
+		public uint RecipeNetworkId { get; set; }
+	}
+
+	public class CraftAutoAction : ItemStackAction
+	{
+		public uint RecipeNetworkId { get; set; }
+	}
+
+	public class CraftCreativeAction : ItemStackAction
+	{
+		public uint CreativeItemNetworkId { get; set; }
+	}
+
+	public class CraftNotImplementedDeprecatedAction : ItemStackAction
+	{
+		// nothing
+	}
+
+	public class CraftResultDeprecatedAction : ItemStackAction
+	{
+		public ItemStacks ResultItems { get; set; } = new ItemStacks();
+		public byte TimesCrafted { get; set; }
+	}
+
+	public class ItemStackResponses : List<ItemStackResponse>
+	{
+	}
+
+	public class ItemStackResponse
+	{
+		public int RequestId { get; set; }
+		public bool Success { get; set; } = true;
+		public List<StackResponseContainerInfo> Responses { get; set; } = new List<StackResponseContainerInfo>();
+	}
+
+
+	public class StackResponseContainerInfo
+	{
+		public byte ContainerId { get; set; }
+		public List<StackResponseSlotInfo> Slots { get; set; } = new List<StackResponseSlotInfo>();
+	}
+
+	public class StackResponseSlotInfo
+	{
+		public byte Slot { get; set; }
+		public byte HotbarSlot { get; set; }
+		public byte Count { get; set; }
+		public int StackNetworkId  { get; set; }
+	}
+
+
+	/// <summary>
+	/// Old transactions
+	/// </summary>
+
 	public abstract class Transaction
 	{
+		public int RequestId { get; set; }
+		public List<RequestRecord> RequestRecords { get; set; } = new List<RequestRecord>();
 		public List<TransactionRecord> TransactionRecords { get; set; } = new List<TransactionRecord>();
+	}
+
+	public class RequestRecord
+	{
+		public byte ContainerId { get; set; }
+		public List<byte> Slots { get; set; } = new List<byte>();
 	}
 
 	public class NormalTransaction : Transaction

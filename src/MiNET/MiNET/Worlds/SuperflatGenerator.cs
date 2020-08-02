@@ -54,20 +54,20 @@ namespace MiNET.Worlds
 			}
 		}
 
-		public void Initialize()
+		public void Initialize(IWorldProvider worldProvider)
 		{
 			BlockLayers = ParseSeed(Seed);
 		}
 
 		public ChunkColumn GenerateChunkColumn(ChunkCoordinates chunkCoordinates)
 		{
-			ChunkColumn chunk = new ChunkColumn();
+			var chunk = new ChunkColumn();
 			chunk.X = chunkCoordinates.X;
 			chunk.Z = chunkCoordinates.Z;
 
 			PopulateChunk(chunk);
 
-			Random random = new Random((chunk.X * 397) ^ chunk.Z);
+			var random = new Random((chunk.X * 397) ^ chunk.Z);
 			if (random.NextDouble() > 0.99)
 			{
 				GenerateLake(random, chunk, Dimension == Dimension.Overworld ? new Water() : Dimension == Dimension.Nether ? (Block) new Lava() : new Air());

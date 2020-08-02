@@ -50,17 +50,15 @@ namespace MiNET.Client
 
 		public virtual void HandleMcpePlayStatus(McpePlayStatus message)
 		{
-			if (Log.IsDebugEnabled) Log.Debug($"Player status={message.status}");
-
 			Client.PlayerStatus = message.status;
 
 			if (Client.PlayerStatus == 3)
 			{
 				Client.HasSpawned = true;
-				if (Client.IsEmulator)
+				//if (Client.IsEmulator)
 				{
 					Client.PlayerStatusChangedWaitHandle.Set();
-					Client.SendMcpeMovePlayer();
+					//Client.SendMcpeMovePlayer();
 				}
 			}
 		}
@@ -68,12 +66,12 @@ namespace MiNET.Client
 		public virtual void HandleMcpeServerToClientHandshake(McpeServerToClientHandshake message)
 		{
 			string token = message.token;
-			Log.Debug($"JWT:\n{token}");
+			if (Log.IsDebugEnabled) Log.Debug($"JWT:\n{token}");
 
 			IDictionary<string, dynamic> headers = JWT.Headers(token);
 			string x5u = headers["x5u"];
 
-			Log.Debug($"JWT payload:\n{JWT.Payload(token)}");
+			if (Log.IsDebugEnabled) Log.Debug($"JWT payload:\n{JWT.Payload(token)}");
 
 			var remotePublicKey = (ECPublicKeyParameters) PublicKeyFactory.CreateKey(x5u.DecodeBase64());
 
@@ -116,21 +114,21 @@ namespace MiNET.Client
 
 			if (message.resourcepackinfos.Count != 0)
 			{
-				ResourcePackIds resourcePackIds = new ResourcePackIds();
+				var resourcePackIds = new ResourcePackIds();
 
-				foreach (var packInfo in message.resourcepackinfos)
+				foreach (ResourcePackInfo packInfo in message.resourcepackinfos)
 				{
 					resourcePackIds.Add(packInfo.PackIdVersion.Id);
 				}
 
-				McpeResourcePackClientResponse response = new McpeResourcePackClientResponse();
+				var response = new McpeResourcePackClientResponse();
 				response.responseStatus = 2;
 				response.resourcepackids = resourcePackIds;
 				Client.SendPacket(response);
 			}
 			else
 			{
-				McpeResourcePackClientResponse response = new McpeResourcePackClientResponse();
+				var response = new McpeResourcePackClientResponse();
 				response.responseStatus = 3;
 				Client.SendPacket(response);
 			}
@@ -147,7 +145,7 @@ namespace MiNET.Client
 			//}
 			//else
 			{
-				McpeResourcePackClientResponse response = new McpeResourcePackClientResponse();
+				var response = new McpeResourcePackClientResponse();
 				response.responseStatus = 4;
 				Client.SendPacket(response);
 			}
@@ -178,6 +176,13 @@ namespace MiNET.Client
 			var packet = McpeRequestChunkRadius.CreateObject();
 			client.ChunkRadius = 5;
 			packet.chunkRadius = client.ChunkRadius;
+
+			if (Client.IsEmulator)
+			{
+				Client.HasSpawned = true;
+				Client.PlayerStatusChangedWaitHandle.Set();
+				Client.SendMcpeMovePlayer();
+			}
 
 			client.SendPacket(packet);
 		}
@@ -372,7 +377,8 @@ namespace MiNET.Client
 		public virtual void HandleMcpeChangeDimension(McpeChangeDimension message)
 		{
 			Thread.Sleep(3000);
-			McpePlayerAction action = McpePlayerAction.CreateObject();
+
+			var action = McpePlayerAction.CreateObject();
 			action.runtimeEntityId = Client.EntityId;
 			action.actionId = (int) PlayerAction.DimensionChangeAck;
 			Client.SendPacket(action);
@@ -450,37 +456,34 @@ namespace MiNET.Client
 		{
 		}
 
-		protected Dictionary<string, uint> resourcePackDataInfos = new Dictionary<string, uint>();
-		private IMcpeClientMessageHandler McpeClientMessageHandlerImplementation;
+		private Dictionary<string, uint> _resourcePackDataInfos = new Dictionary<string, uint>();
 
 		public virtual void HandleMcpeResourcePackDataInfo(McpeResourcePackDataInfo message)
 		{
-			var packageId = message.packageId;
-			McpeResourcePackChunkRequest request = new McpeResourcePackChunkRequest();
-			request.packageId = packageId;
+			var request = new McpeResourcePackChunkRequest();
+			request.packageId = message.packageId;
 			request.chunkIndex = 0;
 			Client.SendPacket(request);
-			resourcePackDataInfos.Add(message.packageId, message.chunkCount);
+			_resourcePackDataInfos.Add(message.packageId, message.chunkCount);
 		}
 
 		public virtual void HandleMcpeResourcePackChunkData(McpeResourcePackChunkData message)
 		{
-			if (message.chunkIndex + 1 < resourcePackDataInfos[message.packageId])
+			if (message.chunkIndex + 1 < _resourcePackDataInfos[message.packageId])
 			{
-				var packageId = message.packageId;
-				McpeResourcePackChunkRequest request = new McpeResourcePackChunkRequest();
-				request.packageId = packageId;
+				var request = new McpeResourcePackChunkRequest();
+				request.packageId = message.packageId;
 				request.chunkIndex = message.chunkIndex + 1;
 				Client.SendPacket(request);
 			}
 			else
 			{
-				resourcePackDataInfos.Remove(message.packageId);
+				_resourcePackDataInfos.Remove(message.packageId);
 			}
 
-			if (resourcePackDataInfos.Count == 0)
+			if (_resourcePackDataInfos.Count == 0)
 			{
-				McpeResourcePackClientResponse response = new McpeResourcePackClientResponse();
+				var response = new McpeResourcePackClientResponse();
 				response.responseStatus = 3;
 				Client.SendPacket(response);
 			}
@@ -578,24 +581,24 @@ namespace MiNET.Client
 		{
 		}
 
-		public virtual void HandleMcpeSetScoreboardIdentityPacket(McpeSetScoreboardIdentityPacket message)
+		public virtual void HandleMcpeSetScoreboardIdentity(McpeSetScoreboardIdentity message)
 		{
 		}
 
-		public virtual void HandleMcpeUpdateSoftEnumPacket(McpeUpdateSoftEnumPacket message)
+		public virtual void HandleMcpeUpdateSoftEnum(McpeUpdateSoftEnum message)
 		{
 		}
 
-		public virtual void HandleMcpeNetworkStackLatencyPacket(McpeNetworkStackLatencyPacket message)
+		public virtual void HandleMcpeNetworkStackLatency(McpeNetworkStackLatency message)
 		{
-			var packet = McpeNetworkStackLatencyPacket.CreateObject();
+			var packet = McpeNetworkStackLatency.CreateObject();
 			packet.timestamp = message.timestamp;
 			packet.unknownFlag = 0;
 
 			Client.SendPacket(packet);
 		}
 
-		public virtual void HandleMcpeScriptCustomEventPacket(McpeScriptCustomEventPacket message)
+		public virtual void HandleMcpeScriptCustomEvent(McpeScriptCustomEvent message)
 		{
 		}
 
@@ -667,7 +670,23 @@ namespace MiNET.Client
 		{
 		}
 
-		public virtual void HandleMcpeNetworkSettingsPacket(McpeNetworkSettingsPacket message)
+		public virtual void HandleMcpeNetworkSettings(McpeNetworkSettings message)
+		{
+		}
+
+		public virtual void HandleMcpeCreativeContent(McpeCreativeContent message)
+		{
+		}
+
+		public void HandleMcpePlayerEnchantOptions(McpePlayerEnchantOptions message)
+		{
+		}
+
+		public virtual void HandleMcpeItemStackResponse(McpeItemStackResponse message)
+		{
+		}
+
+		public virtual void HandleMcpeAlexEntityAnimation(McpeAlexEntityAnimation message)
 		{
 		}
 

@@ -28,6 +28,7 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using log4net;
 using MiNET.Blocks;
 using MiNET.Utils;
@@ -41,18 +42,26 @@ namespace MiNET.Worlds
 		private bool _isAllAir = true;
 
 		private List<int> _runtimeIds = new List<int> {0}; // Add air, always as first (performance)
+		internal List<int> RuntimeIds => _runtimeIds;
+
 		private short[] _blocks;
+		internal short[] Blocks => _blocks;
 
 		private List<int> _loggedRuntimeIds = new List<int>();
+		internal List<int> LoggedRuntimeIds => _loggedRuntimeIds;
+
 		private byte[] _loggedBlocks; // We use only byte size on this palette index table, because can basically only be water and snow-levels
+		internal byte[] LoggedBlocks => _loggedBlocks;
 
 		// Consider disabling these if we don't calculate lights
 		public NibbleArray _blocklight;
 		public NibbleArray _skylight;
 
-		private byte[] _cache;
-
 		public bool IsDirty { get; private set; }
+
+		public ulong Hash { get; set; }
+		public bool DisableCache { get; set; }
+		private byte[] _cache;
 
 		public SubChunk(bool clearBuffers = true)
 		{
@@ -73,22 +82,23 @@ namespace MiNET.Worlds
 		}
 
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public bool IsAllAir()
 		{
-			if (IsDirty)
+			//if (IsDirty)
 			{
 				_isAllAir = AllZeroFast(_blocks);
-				//_isDirty = false;
 			}
 			return _isAllAir;
 		}
 
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static unsafe bool AllZeroFast<T>(T[] data) where T : unmanaged
 		{
 			fixed (T* shorts = data)
 			{
 				byte* bytes = (byte*) shorts;
-				int len = data.Length * sizeof(short);
+				int len = data.Length * sizeof(T);
 				int rem = len % (sizeof(long) * 16);
 				long* b = (long*) bytes;
 				long* e = (long*) (shorts + len - rem);
@@ -137,6 +147,7 @@ namespace MiNET.Worlds
 			int paletteIndex = _blocks[GetIndex(bx, by, bz)];
 			if (paletteIndex >= _runtimeIds.Count || paletteIndex < 0) Log.Warn($"Unexpected paletteIndex of {paletteIndex} with size of palette is {_runtimeIds.Count}");
 			int runtimeId = _runtimeIds[paletteIndex];
+			if(runtimeId < 0 || runtimeId >= BlockFactory.BlockPalette.Count) Log.Warn($"Couldn't locate runtime id {runtimeId} for block");
 			int bid = BlockFactory.BlockPalette[runtimeId].Id;
 			return bid == -1 ? 0 : bid;
 		}
@@ -147,8 +158,8 @@ namespace MiNET.Worlds
 
 			int index = _blocks[GetIndex(bx, by, bz)];
 			int runtimeId = _runtimeIds[index];
-			var blockState = BlockFactory.BlockPalette[runtimeId];
-			var block = BlockFactory.GetBlockById(blockState.Id);
+			BlockStateContainer blockState = BlockFactory.BlockPalette[runtimeId];
+			Block block = BlockFactory.GetBlockById(blockState.Id);
 			block.SetState(blockState.States);
 			block.Metadata = (byte) blockState.Data; //TODO: REMOVE metadata. Not needed.
 
@@ -177,6 +188,13 @@ namespace MiNET.Worlds
 			IsDirty = true;
 		}
 
+		public void SetLoggedBlock(int bx, int by, int bz, Block block)
+		{
+			int runtimeId = block.GetRuntimeId();
+			if (runtimeId < 0) return;
+
+			SetLoggedBlockByRuntimeId(bx, by, bz, runtimeId);
+		}
 
 		public void SetLoggedBlockByRuntimeId(int bx, int by, int bz, int runtimeId)
 		{
@@ -214,7 +232,7 @@ namespace MiNET.Worlds
 
 		public void Write(MemoryStream stream)
 		{
-			if (_cache != null)
+			if (!DisableCache && !IsDirty && _cache != null)
 			{
 				stream.Write(_cache);
 				return;
@@ -242,15 +260,20 @@ namespace MiNET.Worlds
 			stream.Position = storePosition;
 			stream.WriteByte((byte) numberOfStores); // storage size
 
-			var bytes = new byte[length];
-			stream.Position = startPos;
-			int read = stream.Read(bytes, 0, length);
-			if (read != length)
-				throw new InvalidDataException($"Read wrong amount of data. Expected {length} but read {read}");
-			if (startPos + length != stream.Position)
-				throw new InvalidDataException($"Expected {startPos + length} but was {stream.Position}");
+			//if (DisableCache)
+			{
+				var bytes = new byte[length];
+				stream.Position = startPos;
+				int read = stream.Read(bytes, 0, length);
+				if (read != length)
+					throw new InvalidDataException($"Read wrong amount of data. Expected {length} but read {read}");
+				if (startPos + length != stream.Position)
+					throw new InvalidDataException($"Expected {startPos + length} but was {stream.Position}");
 
-			_cache = bytes;
+				_cache = bytes;
+			}
+
+			IsDirty = false;
 		}
 
 		private bool WriteStore(MemoryStream stream, short[] blocks, byte[] loggedBlocks, bool forceWrite, List<int> palette)

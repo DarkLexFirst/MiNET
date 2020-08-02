@@ -27,20 +27,14 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
-using System.Threading.Tasks;
 using log4net;
 using MiNET;
-using MiNET.BlockEntities;
 using MiNET.Blocks;
 using MiNET.Effects;
 using MiNET.Entities;
-using MiNET.Entities.ImageProviders;
-using MiNET.Entities.World;
 using MiNET.Items;
 using MiNET.Net;
 using MiNET.Particles;
@@ -91,6 +85,7 @@ namespace TestPlugin.NiceLobby
 			{
 				Player player = args.Player;
 				player.PlayerJoin += OnPlayerJoin;
+				player.LocalPlayerIsInitialized += OnLocalPlayerIsInitialized;
 				player.PlayerLeave += OnPlayerLeave;
 				player.Ticking += OnTicking;
 			};
@@ -234,6 +229,8 @@ namespace TestPlugin.NiceLobby
 					{
 						if (!player.Username.Equals("gurunx")) continue;
 
+						Log.Debug("Skin tick");
+
 						if (_image >= 9) _image = 0;
 
 						_image++;
@@ -245,61 +242,61 @@ namespace TestPlugin.NiceLobby
 						//skin.SkinGeometryName = "";
 						//skin.SkinGeometry = Encoding.UTF8.GetBytes(File.ReadAllText(@"D:\Temp\humanoid.json"));
 
-						{
-							string file = Path.Combine(@"D:\Development\Other\Smash Heroes 3x6 (128)\Smash Heroes 3x6 (128)", $"Smash Heroes Trailer{_imageCape:D4}.bmp");
-							//string file = @"D:\Temp\Smiley\big_smile0" + _image + ".png";
-							if (!File.Exists(file))
-							{
-								_imageCape = 0;
-								continue;
-							}
+						//{
+						//	string file = Path.Combine(@"D:\Development\Other\Smash Heroes 3x6 (128)\Smash Heroes 3x6 (128)", $"Smash Heroes Trailer{_imageCape:D4}.bmp");
+						//	//string file = @"D:\Temp\Smiley\big_smile0" + _image + ".png";
+						//	if (!File.Exists(file))
+						//	{
+						//		_imageCape = 0;
+						//		continue;
+						//	}
 
-							//Bitmap bitmap = new Bitmap((Bitmap)Image.FromFile(file), 12, 18);
-							Bitmap bitmap = new Bitmap((Bitmap) Image.FromFile(file), 64, 64);
-							int offsetx = 16, offsety = 16;
-							bitmap = CropImage(bitmap, new Rectangle(offsetx, offsety, 12, 18));
-							byte[] bytes = new byte[32 * 64 * 4];
+						//	//Bitmap bitmap = new Bitmap((Bitmap)Image.FromFile(file), 12, 18);
+						//	Bitmap bitmap = new Bitmap((Bitmap) Image.FromFile(file), 64, 64);
+						//	int offsetx = 16, offsety = 16;
+						//	bitmap = CropImage(bitmap, new Rectangle(offsetx, offsety, 12, 18));
+						//	byte[] bytes = new byte[32 * 64 * 4];
 
-							int i = 0;
-							for (int y = 0; y < 32; y++)
-							{
-								for (int x = 0; x < 64; x++)
-								{
-									if (y >= bitmap.Height || x >= bitmap.Width)
-									{
-										Color color = Color.Yellow;
-										bytes[i++] = color.R;
-										bytes[i++] = color.G;
-										bytes[i++] = color.B;
-										bytes[i++] = color.A;
-										continue;
-									}
-									else
-									{
-										Color color = bitmap.GetPixel(x, y);
-										bytes[i++] = color.R;
-										bytes[i++] = color.G;
-										bytes[i++] = color.B;
-										bytes[i++] = color.A;
-									}
-								}
-							}
-							skin.Cape = new Cape()
-							{
-								ImageHeight = 32,
-								ImageWidth = 64,
-								Data = bytes,
-							};
-						}
+						//	int i = 0;
+						//	for (int y = 0; y < 32; y++)
+						//	{
+						//		for (int x = 0; x < 64; x++)
+						//		{
+						//			if (y >= bitmap.Height || x >= bitmap.Width)
+						//			{
+						//				Color color = Color.Yellow;
+						//				bytes[i++] = color.R;
+						//				bytes[i++] = color.G;
+						//				bytes[i++] = color.B;
+						//				bytes[i++] = color.A;
+						//				continue;
+						//			}
+						//			else
+						//			{
+						//				Color color = bitmap.GetPixel(x, y);
+						//				bytes[i++] = color.R;
+						//				bytes[i++] = color.G;
+						//				bytes[i++] = color.B;
+						//				bytes[i++] = color.A;
+						//			}
+						//		}
+						//	}
+						//	skin.Cape = new Cape()
+						//	{
+						//		ImageHeight = 32,
+						//		ImageWidth = 64,
+						//		Data = bytes,
+						//	};
+						//}
 
 
 						Level level = player.Level;
-						//if (level.TickTime%3 != 0) return;
+						if (level.TickTime % 10 != 0) continue;
 						//player.SetNameTag(player.Username + " " + level.TickTime + " testing");
 						//player.SetDisplayName(player.Username + " " + level.TickTime + " testing");
 
 						var texture = skin.Data;
-						byte[] smiley = GetTextureFromFile(@"D:\Temp\Smiley\big_smile0" + _image + ".png");
+						byte[] smiley = GetTextureFromFile(@"C:\Temp\Smiley\big_smile0" + _image + ".png");
 						if (smiley.Length != 8 * 8 * 4) return;
 						int s = 0;
 						int br = 8;
@@ -319,9 +316,11 @@ namespace TestPlugin.NiceLobby
 						}
 
 						{
-							McpePlayerSkin updateSkin = McpePlayerSkin.CreateObject();
+							var updateSkin = McpePlayerSkin.CreateObject();
 							updateSkin.uuid = player.ClientUuid;
+							updateSkin.oldSkinName = player.Skin.SkinId;
 							updateSkin.skin = skin;
+							updateSkin.skinName = skin.SkinId;
 							level.RelayBroadcast(updateSkin);
 						}
 
@@ -352,6 +351,10 @@ namespace TestPlugin.NiceLobby
 						}
 					}
 				}
+			}
+			catch (Exception e)
+			{
+				Log.Error("SkinTick", e);
 			}
 			finally
 			{
@@ -407,18 +410,29 @@ namespace TestPlugin.NiceLobby
 			//player.Inventory.Slots[idx++] = new ItemMonsterEgg(EntityType.Sheep) {Count = 64};
 			//player.Inventory.Slots[idx++] = new ItemMonsterEgg(EntityType.Wolf) {Count = 64};
 
-			//player.Inventory.Slots[idx++] = new ItemDiamondAxe() {Count = 1};
-			//player.Inventory.Slots[idx++] = new ItemDiamondShovel() {Count = 1};
-			//player.Inventory.Slots[idx++] = new ItemDiamondPickaxe() {Count = 1};
-			//player.Inventory.Slots[idx++] = new ItemBlock(new CraftingTable()) {Count = 64};
-			//player.Inventory.Slots[idx++] = new ItemBlock(new Chest()) { Count = 64 };
-			//player.Inventory.Slots[idx++] = new ItemBlock(new Anvil()) { Count = 64 };
-			//player.Inventory.Slots[idx++] = new ItemBlock(new EnchantingTable()) { Count = 64 };
+			//player.Inventory.Slots[idx++] = new ItemEmptyMap()
+			//{
+			//	Count = 64,
+			//	UniqueId = Environment.TickCount
+			//};
+			player.Inventory.Slots[idx++] = new ItemAir()
+			{
+				Count = 0,
+				UniqueId = 0
+			};
+			player.Inventory.Slots[idx++] = new ItemDiamondAxe() {Count = 1};
+			player.Inventory.Slots[idx++] = new ItemDiamondShovel() {Count = 1};
+			player.Inventory.Slots[idx++] = new ItemDiamondPickaxe() {Count = 1};
+			player.Inventory.Slots[idx++] = new ItemBlock(new CraftingTable()) {Count = 64};
+			player.Inventory.Slots[idx++] = new ItemBlock(new Chest()) {Count = 64};
+			player.Inventory.Slots[idx++] = new ItemBlock(new Anvil()) {Count = 64};
+			player.Inventory.Slots[idx++] = new ItemBlock(new EnchantingTable()) {Count = 64};
+			player.Inventory.Slots[idx++] = new ItemBlock(new Loom()) {Count = 64};
 			//player.Inventory.Slots[idx++] = new ItemBlock(new Sapling()) { Count = 64 };
 			//player.Inventory.Slots[idx++] = new ItemBlock(new Sapling(), 2) { Count = 64 };
 			//player.Inventory.Slots[idx++] = new ItemBlock(new Vine(), 0) { Count = 64 };
-			player.Inventory.Slots[idx++] = new ItemBlock(new SnowLayer()) {Count = 64};
-			player.Inventory.Slots[idx++] = new ItemBlock(new Dirt()) {Count = 64};
+			//player.Inventory.Slots[idx++] = new ItemBlock(new SnowLayer()) {Count = 64};
+			//player.Inventory.Slots[idx++] = new ItemBlock(new Dirt()) {Count = 64};
 			//player.Inventory.Slots[idx++] = new ItemBlock(new WoodenButton(), 0) { Count = 64 };
 			//player.Inventory.Slots[idx++] = new CustomTestItem(0xC0FFEE) { Count = 1 };
 			//player.Inventory.Slots[idx++] = new CustomTestItem(0xDEADBEEF) {Count = 10 };
@@ -474,11 +488,11 @@ namespace TestPlugin.NiceLobby
 						FireworkType = 4,
 					}
 				},
-				Flight = 2
+				Flight = 1
 			});
 
-			//player.Inventory.Slots[idx++] = fireworks;
-			player.Inventory.Slots[idx++] = new ItemBread() {Count = 64};
+			player.Inventory.Slots[idx++] = fireworks;
+			//player.Inventory.Slots[idx++] = new ItemBread() {Count = 64};
 			//player.Inventory.Slots[idx++] = new ItemSnowball() {Count = 16};
 			//player.Inventory.Slots[idx++] = new ItemBow() {Count = 1};
 			//player.Inventory.Slots[idx++] = new ItemArrow() {Count = 64};
@@ -487,21 +501,42 @@ namespace TestPlugin.NiceLobby
 			//player.Inventory.Slots[idx++] = new ItemWheat() {Count = 1};
 			//player.Inventory.Slots[idx++] = new ItemCarrot() {Count = 1};
 			//player.Inventory.Slots[idx++] = new ItemWheatSeeds() {Count = 1};
-			player.Inventory.Slots[idx++] = new ItemBone() {Count = 64};
+			//player.Inventory.Slots[idx++] = new ItemBone() {Count = 64};
 			player.Inventory.Slots[idx++] = new ItemDye()
 			{
 				Metadata = 4,
 				Count = 64
 			};
-			player.Inventory.Slots[idx++] = new ItemIronSword() {Count = 1};
-			player.Inventory.Slots[idx++] = new ItemIronSword() {Count = 1};
-			player.Inventory.Slots[idx++] = new ItemIronSword() {Count = 1};
-			player.Inventory.Slots[idx++] = new ItemIronSword() {Count = 1};
+			player.Inventory.Slots[idx++] = new ItemIronIngot() {Count = 64};
+			player.Inventory.Slots[idx++] = new ItemIronSword()
+			{
+				Count = 1,
+				Metadata = 0,
+				UniqueId = Environment.TickCount
+			};
+			player.Inventory.Slots[idx++] = new ItemIronSword()
+			{
+				Count = 1,
+				Metadata = 0,
+				UniqueId = Environment.TickCount
+			};
+			player.Inventory.Slots[idx++] = new ItemIronSword()
+			{
+				Count = 1,
+				Metadata = 0,
+				UniqueId = Environment.TickCount
+			};
+			player.Inventory.Slots[idx++] = new ItemIronSword()
+			{
+				Count = 1,
+				Metadata = 0,
+				UniqueId = Environment.TickCount
+			};
 
-			player.Inventory.Helmet = new ItemDiamondHelmet();
-			player.Inventory.Chest = new ItemElytra();
-			player.Inventory.Leggings = new ItemDiamondLeggings();
-			player.Inventory.Boots = new ItemDiamondBoots();
+			player.Inventory.Helmet = new ItemDiamondHelmet() {UniqueId = Environment.TickCount};
+			player.Inventory.Chest = new ItemElytra() {UniqueId = Environment.TickCount};
+			player.Inventory.Leggings = new ItemDiamondLeggings() {UniqueId = Environment.TickCount};
+			player.Inventory.Boots = new ItemDiamondBoots() {UniqueId = Environment.TickCount};
 			//while (player.Inventory.SetFirstEmptySlot(new ItemIronAxe(), false)) { }
 
 			player.SendPlayerInventory();
@@ -510,27 +545,31 @@ namespace TestPlugin.NiceLobby
 			player.SendEquipmentForPlayer();
 
 			_players.TryAdd(player.Username, player);
+		}
 
-			ThreadPool.QueueUserWorkItem(state =>
+		private void OnLocalPlayerIsInitialized(object o, PlayerEventArgs eventArgs)
+		{
+			Thread.Sleep(1000);
+			Player player = eventArgs.Player;
+			Level level = eventArgs.Level;
+
+			level.BroadcastMessage($"{ChatColors.Gold}[{ChatColors.Green}+{ChatColors.Gold}]{ChatFormatting.Reset} {player.Username} joined the server");
+
+			var joinSound = new AnvilUseSound(level.SpawnPoint.ToVector3());
+			joinSound.Spawn(level);
+
+			//player.SendTitle(null, TitleType.Clear);
+			player.SendTitle(null, TitleType.AnimationTimes, 6, 6, 20 * 7); // 7 seconds
+			if (Context.Server.IsEdu)
 			{
-				Thread.Sleep(2000);
-				level.BroadcastMessage($"{ChatColors.Gold}[{ChatColors.Green}+{ChatColors.Gold}]{ChatFormatting.Reset} {player.Username} joined the server");
-				var joinSound = new AnvilUseSound(level.SpawnPoint.ToVector3());
-				joinSound.Spawn(level);
-
-				//player.SendTitle(null, TitleType.Clear);
-				player.SendTitle(null, TitleType.AnimationTimes, 6, 6, 20 * 10);
-				if (Context.Server.IsEdu)
-				{
-					player.SendTitle($"{ChatColors.White}This is a MiNET Education Edition server", TitleType.SubTitle);
-					player.SendTitle($"{ChatColors.Gold}Welcome!", TitleType.Title);
-				}
-				else
-				{
-					player.SendTitle($"{ChatColors.White}This is gurun's MiNET test server", TitleType.SubTitle);
-					player.SendTitle($"{ChatColors.Gold}Welcome {player.Username}!", TitleType.Title);
-				}
-			});
+				player.SendTitle($"{ChatColors.White}This is a MiNET Education Edition server", TitleType.SubTitle);
+				player.SendTitle($"{ChatColors.Gold}Welcome!", TitleType.Title);
+			}
+			else
+			{
+				player.SendTitle($"{ChatColors.White}This is gurun's MiNET test server", TitleType.SubTitle);
+				player.SendTitle($"{ChatColors.Gold}Welcome {player.Username}!", TitleType.Title);
+			}
 		}
 
 		private void OnPlayerLeave(object o, PlayerEventArgs eventArgs)
@@ -1029,283 +1068,6 @@ namespace TestPlugin.NiceLobby
 			ThreadPool.QueueUserWorkItem(delegate(object state) { player.SpawnLevel(player.Level, playerLocation); }, null);
 
 			//player.Level.BroadcastMessage(string.Format("{0} teleported to coordinates {1},{2},{3}.", player.Username, x, y, z), type: MessageType.Raw);
-		}
-
-
-		[Command]
-		//[Authorize(Permission = UserPermission.Op)]
-		public void VideoX(Player player, int numberOfFrames, bool color)
-		{
-			Task.Run(delegate
-			{
-				try
-				{
-					Dictionary<Tuple<int, int>, MapEntity> entities = new Dictionary<Tuple<int, int>, MapEntity>();
-
-					int width = 2;
-					int height = 2;
-					int frameCount = numberOfFrames;
-					//int frameOffset = 0;
-					int frameOffset = 120;
-
-					var frameTicker = new FrameTicker(frameCount);
-
-
-					// 768x384
-					for (int frame = frameOffset; frame < frameCount + frameOffset; frame++)
-					{
-						Log.Info($"Generating frame {frame}");
-
-						string file = Path.Combine(@"D:\Development\Other\Smash Heroes 3x6 (128)\Smash Heroes 3x6 (128)", $"Smash Heroes Trailer{frame:D4}.bmp");
-						//string file = Path.Combine(@"D:\Development\Other\2 by 1 PE test app ad for Gurun-2\exported frames 2", $"pe app ad{frame:D2}.bmp");
-						if (!File.Exists(file)) continue;
-
-						Bitmap image = new Bitmap((Bitmap) Image.FromFile(file), width * 128, height * 128);
-
-						for (int x = 0; x < width; x++)
-						{
-							for (int y = 0; y < height; y++)
-							{
-								var key = new Tuple<int, int>(x, y);
-								if (!entities.ContainsKey(key))
-								{
-									entities.Add(key, new MapEntity(player.Level) {ImageProvider = new VideoImageProvider(frameTicker)});
-								}
-
-								var croppedImage = CropImage(image, new Rectangle(new Point(x * 128, y * 128), new Size(128, 128)));
-								byte[] bitmapToBytes = BitmapToBytes(croppedImage, color);
-
-								if (bitmapToBytes.Length != 128 * 128 * 4) return;
-
-								((VideoImageProvider) entities[key].ImageProvider).Frames.Add(CreateCachedPacket(entities[key].EntityId, bitmapToBytes));
-							}
-						}
-					}
-
-					int i = 0;
-
-					player.Inventory.Slots[i++] = new ItemBlock(new Planks(), 0) {Count = 64};
-					player.Inventory.Slots[i++] = new ItemFrame {Count = 64};
-
-					foreach (MapEntity entity in entities.Values)
-					{
-						entity.SpawnEntity();
-						player.Inventory.Slots[i++] = new ItemMap(entity.EntityId);
-					}
-
-					player.SendPlayerInventory();
-					player.SendMessage("Done generating video.", MessageType.Raw);
-				}
-				catch (Exception e)
-				{
-					Log.Error("Aborted video generation", e);
-				}
-			});
-
-			player.SendMessage("Generating video...", MessageType.Raw);
-		}
-
-		[Command]
-		//[Authorize(Permission = UserPermission.Op)]
-		public void Video2X(Player player, int numberOfFrames, bool color)
-		{
-			Task.Run(delegate
-			{
-				try
-				{
-					Dictionary<Tuple<int, int>, List<MapEntity>> entities = new Dictionary<Tuple<int, int>, List<MapEntity>>();
-
-					int width = 6;
-					int height = 3;
-					int frameCount = numberOfFrames;
-					//int frameOffset = 0;
-					int frameOffset = 120;
-
-					var frameTicker = new FrameTicker(frameCount);
-
-					// 768x384
-					for (int frame = frameOffset; frame < frameCount + frameOffset; frame++)
-					{
-						Log.Info($"Generating frame {frame}");
-
-						string file = Path.Combine(@"D:\Development\Other\Smash Heroes 3x6 (128)\Smash Heroes 3x6 (128)", $"Smash Heroes Trailer{frame:D4}.bmp");
-						//string file = Path.Combine(@"D:\Development\Other\2 by 1 PE test app ad for Gurun-2\exported frames 2", $"pe app ad{frame:D2}.bmp");
-						if (!File.Exists(file)) continue;
-
-						Bitmap image = new Bitmap((Bitmap) Image.FromFile(file), width * 128, height * 128);
-
-						for (int x = 0; x < width; x++)
-						{
-							for (int y = 0; y < height; y++)
-							{
-								var key = new Tuple<int, int>(x, y);
-								if (!entities.ContainsKey(key))
-								{
-									entities.Add(key, new List<MapEntity>());
-								}
-
-								List<MapEntity> frames = entities[key];
-
-								var croppedImage = CropImage(image, new Rectangle(new Point(x * 128, y * 128), new Size(128, 128)));
-								byte[] bitmapToBytes = BitmapToBytes(croppedImage, color);
-
-								if (bitmapToBytes.Length != 128 * 128 * 4) return;
-
-								MapEntity entity = new MapEntity(player.Level);
-								entity.ImageProvider = new MapImageProvider {Batch = CreateCachedPacket(entity.EntityId, bitmapToBytes)};
-								entity.SpawnEntity();
-								frames.Add(entity);
-							}
-						}
-					}
-
-					int i = 0;
-
-					player.Inventory.Slots[i++] = new ItemBlock(new Planks(), 0) {Count = 64};
-
-					foreach (var entites in entities.Values)
-					{
-						player.Inventory.Slots[i++] = new CustomItemFrame(entites, frameTicker) {Count = 64};
-					}
-
-					player.SendPlayerInventory();
-					player.SendMessage("Done generating video.", MessageType.Raw);
-
-					BlockCoordinates center = player.KnownPosition.GetCoordinates3D();
-					var level = player.Level;
-
-					for (int x = 0; x < width; x++)
-					{
-						for (int y = 0; y < height; y++)
-						{
-							var key = new Tuple<int, int>(x, y);
-							List<MapEntity> frames = entities[key];
-
-							BlockCoordinates bc = new BlockCoordinates(center.X - x, center.Y + height - y - 1, center.Z + 2);
-							var wood = new Planks {Coordinates = bc};
-							level.SetBlock(wood);
-
-							BlockCoordinates frambc = new BlockCoordinates(center.X - x, center.Y + height - y - 1, center.Z + 1);
-							ItemFrameBlockEntity itemFrameBlockEntity = new ItemFrameBlockEntity {Coordinates = frambc};
-
-							var itemFrame = new CustomFrame(frames, itemFrameBlockEntity, level, frameTicker)
-							{
-								Coordinates = frambc,
-								FacingDirection = (int) BlockFace.South
-							};
-							level.SetBlock(itemFrame);
-							level.SetBlockEntity(itemFrameBlockEntity);
-						}
-					}
-				}
-				catch (Exception e)
-				{
-					Log.Error("Aborted video generation", e);
-				}
-			});
-
-			player.SendMessage("Generating video...", MessageType.Raw);
-		}
-
-
-		private McpeWrapper CreateCachedPacket(long mapId, byte[] bitmapToBytes)
-		{
-			MapInfo mapInfo = new MapInfo
-			{
-				MapId = mapId,
-				UpdateType = 2,
-				Scale = 0,
-				X = 0,
-				Z = 0,
-				Col = 128,
-				Row = 128,
-				XOffset = 0,
-				ZOffset = 0,
-				Data = bitmapToBytes,
-			};
-
-			McpeClientboundMapItemData packet = McpeClientboundMapItemData.CreateObject();
-			packet.mapinfo = mapInfo;
-			var batch = CreateMcpeBatch(packet.Encode());
-
-			return batch;
-		}
-
-		internal static McpeWrapper CreateMcpeBatch(byte[] bytes)
-		{
-			McpeWrapper batch = BatchUtils.CreateBatchPacket(new Memory<byte>(bytes, 0, (int) bytes.Length), CompressionLevel.Optimal, true);
-			batch.MarkPermanent();
-			batch.Encode();
-			return batch;
-		}
-
-
-		public static Bitmap CropImage(Bitmap img, Rectangle cropArea)
-		{
-			return img.Clone(cropArea, img.PixelFormat);
-		}
-
-		private static byte[] ReadFrame(string filename)
-		{
-			Bitmap bitmap;
-			try
-			{
-				bitmap = new Bitmap(filename);
-			}
-			catch (Exception e)
-			{
-				Log.Error("Failed reading file " + filename);
-				bitmap = new Bitmap(128, 128);
-			}
-
-			byte[] bytes = BitmapToBytes(bitmap);
-
-			return bytes;
-		}
-
-		public Bitmap GrayScale(Bitmap bmp)
-		{
-			for (int y = 0; y < bmp.Height; y++)
-			{
-				for (int x = 0; x < bmp.Width; x++)
-				{
-					var c = bmp.GetPixel(x, y);
-					var rgb = (int) ((c.R + c.G + c.B) / 3);
-					bmp.SetPixel(x, y, Color.FromArgb(rgb, rgb, rgb));
-				}
-			}
-			return bmp;
-		}
-
-		public static byte[] BitmapToBytes(Bitmap bitmap, bool useColor = false)
-		{
-			byte[] bytes;
-			bytes = new byte[bitmap.Height * bitmap.Width * 4];
-
-			int i = 0;
-			for (int y = 0; y < bitmap.Height; y++)
-			{
-				for (int x = 0; x < bitmap.Width; x++)
-				{
-					Color color = bitmap.GetPixel(x, y);
-					if (!useColor)
-					{
-						byte rgb = (byte) ((color.R + color.G + color.B) / 3);
-						bytes[i++] = rgb;
-						bytes[i++] = rgb;
-						bytes[i++] = rgb;
-						bytes[i++] = 0xff;
-					}
-					else
-					{
-						bytes[i++] = color.R;
-						bytes[i++] = color.G;
-						bytes[i++] = color.B;
-						bytes[i++] = 0xff;
-					}
-				}
-			}
-			return bytes;
 		}
 	}
 }

@@ -28,6 +28,7 @@ using System.Linq;
 using fNbt;
 using log4net;
 using MiNET.BlockEntities;
+using MiNET.Blocks;
 using MiNET.Utils;
 using MiNET.Worlds;
 
@@ -48,7 +49,7 @@ namespace MiNET
 			_level = level;
 		}
 
-		public Inventory GetInventory(int inventoryId)
+		public virtual Inventory GetInventory(int inventoryId)
 		{
 			lock (_cache)
 			{
@@ -56,7 +57,7 @@ namespace MiNET
 			}
 		}
 
-		public Inventory GetInventory(BlockCoordinates inventoryCoord)
+		public virtual Inventory GetInventory(BlockCoordinates inventoryCoord)
 		{
 			lock (_cache)
 			{
@@ -67,14 +68,30 @@ namespace MiNET
 				}
 
 				BlockEntity blockEntity = _level.GetBlockEntity(inventoryCoord);
+				if (blockEntity == null)
+				{
+					Log.Warn($"Found no block entity");
+					Block inventoryBlock = _level.GetBlock(inventoryCoord);
+					switch (inventoryBlock)
+					{
+						case Chest _:
+							blockEntity = new ChestBlockEntity();
+							break;
+						case ShulkerBox _:
+							blockEntity = new ShulkerBoxBlockEntity();
+							break;
+					}
+				}
 
 				if (blockEntity == null)
 				{
-					if (Log.IsDebugEnabled) Log.Warn($"No blockentity found at {inventoryCoord}");
+					if (Log.IsDebugEnabled) Log.Debug($"No blockentity found at {inventoryCoord}");
 					return null;
 				}
 
 				NbtCompound comp = blockEntity.GetCompound();
+				if (Log.IsDebugEnabled) Log.Warn($"Found block entity at {inventoryCoord}\n{comp}");
+
 
 				Inventory inventory;
 				switch (blockEntity)

@@ -1,4 +1,4 @@
-#region LICENSE
+﻿#region LICENSE
 
 // The contents of this file are subject to the Common Public Attribution
 // License Version 1.0. (the "License"); you may not use this file except in
@@ -25,9 +25,9 @@
 
 namespace MiNET.Items
 {
-	public class ItemLeatherBoots : Item
+	public class ItemLeatherBoots : ArmorBootsBase
 	{
-		public ItemLeatherBoots() : base(301)
+		public ItemLeatherBoots() : base("minecraft:leather_boots", 301)
 		{
 			MaxStackSize = 1;
 			ItemType = ItemType.Boots;

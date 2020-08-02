@@ -27,6 +27,7 @@ using System;
 using System.Linq;
 using System.Numerics;
 using fNbt;
+using log4net;
 using MiNET.BlockEntities;
 using MiNET.Blocks;
 using MiNET.Entities;
@@ -45,6 +46,10 @@ namespace MiNET.Items
 	/// </summary>
 	public class Item : ICloneable
 	{
+		private static readonly ILog Log = LogManager.GetLogger(typeof(Item));
+
+		public int UniqueId { get; set; } = Environment.TickCount;
+		public string Name { get; protected set; } = string.Empty;
 		public short Id { get; protected set; }
 		public short Metadata { get; set; }
 		public byte Count { get; set; }
@@ -62,11 +67,16 @@ namespace MiNET.Items
 
 		[JsonIgnore] public int FuelEfficiency { get; set; }
 
-		protected internal Item(short id, short metadata = 0, int count = 1)
+		protected internal Item(string name, short id, short metadata = 0, int count = 1)
 		{
+			Name = name;
 			Id = id;
 			Metadata = metadata;
 			Count = (byte) count;
+		}
+
+		protected internal Item(short id, short metadata = 0, int count = 1) : this(String.Empty, id, metadata, count)
+		{
 		}
 
 		public virtual void UseItem(Level world, Player player, BlockCoordinates blockCoordinates)
@@ -190,7 +200,7 @@ namespace MiNET.Items
 			return null;
 		}
 
-		public virtual void Release(Level world, Player player, BlockCoordinates blockCoordinates, long timeUsed)
+		public virtual void Release(Level world, Player player, BlockCoordinates blockCoordinates)
 		{
 		}
 
@@ -199,20 +209,12 @@ namespace MiNET.Items
 			if (Id != other.Id || Metadata != other.Metadata) return false;
 			if (ExtraData == null ^ other.ExtraData == null) return false;
 
+			//TODO: This doesn't work in  most cases. We need to fix comparison when name == null
 			byte[] saveToBuffer = null;
-			if (other.ExtraData != null)
-			{
-				other.ExtraData.Name = string.Empty;
-				saveToBuffer = new NbtFile(other.ExtraData).SaveToBuffer(NbtCompression.None);
-			}
-
+			if(other.ExtraData?.Name != null) saveToBuffer = new NbtFile(other.ExtraData).SaveToBuffer(NbtCompression.None);
 			byte[] saveToBuffer2 = null;
-			if (ExtraData != null)
-			{
-				ExtraData.Name = string.Empty;
-				saveToBuffer2 = new NbtFile(ExtraData).SaveToBuffer(NbtCompression.None);
-			}
-			var nbtCheck = !(saveToBuffer == null ^ saveToBuffer2 == null);
+			if(ExtraData?.Name != null) saveToBuffer2 = new NbtFile(ExtraData).SaveToBuffer(NbtCompression.None);
+			bool nbtCheck = !(saveToBuffer == null ^ saveToBuffer2 == null);
 			if (nbtCheck)
 			{
 				if (saveToBuffer == null)
@@ -250,7 +252,7 @@ namespace MiNET.Items
 
 		public override string ToString()
 		{
-			return $"{GetType().Name}(Id={Id}, Meta={Metadata}) Count={Count}, NBT={ExtraData}";
+			return $"{GetType().Name}(Id={Id}, Meta={Metadata}, UniqueId={UniqueId}) Count={Count}, NBT={ExtraData}";
 		}
 
 		public bool Interact(Level level, Player player, Entity target)
@@ -271,17 +273,26 @@ namespace MiNET.Items
 		Gold = 3,
 		Iron = 4,
 		Diamond = 5,
+		Netherite = 6
 	}
 
 	public enum ItemType
 	{
 		//Tools
 		Sword,
+		Bow,
 		Shovel,
 		PickAxe,
 		Axe,
 		Item,
 		Hoe,
+		Sheers,
+		FlintAndSteel,
+		Elytra,
+		Trident,
+		CarrotOnAStick,
+		FishingRod,
+		Book,
 
 		//Armor
 		Helmet,

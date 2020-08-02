@@ -23,11 +23,15 @@
 
 #endregion
 
+using System;
+using MiNET.Utils;
+using MiNET.Worlds;
+
 namespace MiNET.Items
 {
-	public class ItemDiamondChestplate : Item
+	public class ItemDiamondChestplate : ArmorChestplateBase
 	{
-		public ItemDiamondChestplate() : base(311)
+		public ItemDiamondChestplate() : base("minecraft:diamond_chestplate", 311)
 		{
 			MaxStackSize = 1;
 			ItemType = ItemType.Chestplate;

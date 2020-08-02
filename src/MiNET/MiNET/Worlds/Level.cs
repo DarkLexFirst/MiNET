@@ -42,6 +42,7 @@ using MiNET.Entities.Passive;
 using MiNET.Entities.World;
 using MiNET.Items;
 using MiNET.Net;
+using MiNET.Net.RakNet;
 using MiNET.Sounds;
 using MiNET.Utils;
 using MiNET.Utils.Diagnostics;
@@ -98,9 +99,9 @@ namespace MiNET.Worlds
 		public bool AllowBuild { get; set; } = true;
 		public bool AllowBreak { get; set; } = true;
 
-		public EntityManager EntityManager { get; private set; }
-		public InventoryManager InventoryManager { get; private set; }
-		public EntitySpawnManager EntitySpawnManager { get; private set; }
+		public EntityManager EntityManager { get; protected set; }
+		public InventoryManager InventoryManager { get; protected set; }
+		public EntitySpawnManager EntitySpawnManager { get; protected set; }
 
 		public int ViewDistance { get; set; }
 
@@ -145,7 +146,11 @@ namespace MiNET.Worlds
 
 				// Pre-cache chunks for spawn coordinates
 				int i = 0;
-				foreach (var chunk in GenerateChunks(new ChunkCoordinates(SpawnPoint), new Dictionary<ChunkCoordinates, McpeWrapper>(), ViewDistance))
+				if (Dimension == Dimension.Nether)
+				{
+				}
+				var chunkCoordinates = new ChunkCoordinates(SpawnPoint) / 8;
+				foreach (var chunk in GenerateChunks(chunkCoordinates, new Dictionary<ChunkCoordinates, McpeWrapper>(), ViewDistance))
 				{
 					if (chunk != null) i++;
 				}
@@ -191,6 +196,8 @@ namespace MiNET.Worlds
 
 		public virtual void Close()
 		{
+			WorldProvider.SaveChunks();
+
 			NetherLevel?.Close();
 			TheEndLevel?.Close();
 
@@ -298,21 +305,19 @@ namespace MiNET.Worlds
 				// It's simply to slow and bad.
 
 				Player[] players = GetAllPlayers();
-				List<Player> spawnedPlayers = players.ToList();
+				var spawnedPlayers = players.ToList();
 				spawnedPlayers.Add(newPlayer);
 
 				Player[] sendList = spawnedPlayers.ToArray();
 
-				McpePlayerList playerListMessage = McpePlayerList.CreateObject();
+				var playerListMessage = McpePlayerList.CreateObject();
 				playerListMessage.records = new PlayerAddRecords(spawnedPlayers);
 				newPlayer.SendPacket(CreateMcpeBatch(playerListMessage.Encode()));
-				playerListMessage.records = null;
 				playerListMessage.PutPool();
 
-				McpePlayerList playerList = McpePlayerList.CreateObject();
+				var playerList = McpePlayerList.CreateObject();
 				playerList.records = new PlayerAddRecords {newPlayer};
 				RelayBroadcast(newPlayer, sendList, CreateMcpeBatch(playerList.Encode()));
-				playerList.records = null;
 				playerList.PutPool();
 
 				newPlayer.SpawnToPlayers(players);
@@ -625,9 +630,7 @@ namespace MiNET.Worlds
 					{
 						if (blockEvent.Value <= TickTime)
 						{
-							long value;
-							BlockWithTicks.TryRemove(blockEvent.Key, out value);
-							GetBlock(blockEvent.Key).OnTick(this, false);
+							if (BlockWithTicks.TryRemove(blockEvent.Key, out _)) GetBlock(blockEvent.Key).OnTick(this, false);
 						}
 					}
 					catch (Exception e)
@@ -672,14 +675,15 @@ namespace MiNET.Worlds
 				// Send player movements
 				BroadCastMovement(players, entities);
 
-				Parallel.ForEach(players, (player, state) =>
+				//TODO: We don't want to trigger sending here. But right now
+				// it seems better for performance since the send-tick is one for all
+				// sessions, so we need to refactor that first.
+				var tasks = new List<Task>();
+				foreach (Player player in players)
 				{
-					if (player.NetworkHandler is PlayerNetworkSession session)
-					{
-						session.SendQueue();
-					}
-				});
-
+					if (player.NetworkHandler is RakSession session) tasks.Add(session.SendQueueAsync());
+				}
+				Task.WhenAll(tasks).Wait();
 
 				if (Log.IsDebugEnabled && _tickTimer.ElapsedMilliseconds >= 50) Log.Error($"World tick too too long: {_tickTimer.ElapsedMilliseconds} ms");
 			}
@@ -786,18 +790,20 @@ namespace MiNET.Worlds
 			DateTime lastSendTime = _lastSendTime;
 			_lastSendTime = DateTime.UtcNow;
 
-			using (MemoryStream stream = new MemoryStream())
+			//using (MemoryStream stream = new MemoryStream())
 			{
 				int playerMoveCount = 0;
 				int entiyMoveCount = 0;
+
+				List<Packet> movePackets = new List<Packet>();
 
 				foreach (var player in players)
 				{
 					if (now - player.LastUpdatedTime <= now - lastSendTime)
 					{
-						PlayerLocation knownPosition = (PlayerLocation) player.KnownPosition.Clone();
+						var knownPosition = (PlayerLocation) player.KnownPosition.Clone();
 
-						McpeMovePlayer move = McpeMovePlayer.CreateObject();
+						var move = McpeMovePlayer.CreateObject();
 						move.runtimeEntityId = player.EntityId;
 						move.x = knownPosition.X;
 						move.y = knownPosition.Y + 1.62f;
@@ -808,10 +814,7 @@ namespace MiNET.Worlds
 						move.mode = (byte) (player.Vehicle == 0 ? 0 : 3);
 						move.onGround = !player.IsGliding && player.IsOnGround;
 						move.otherRuntimeEntityId = player.Vehicle;
-						byte[] bytes = move.Encode();
-						BatchUtils.WriteLength(stream, bytes.Length);
-						stream.Write(bytes, 0, bytes.Length);
-						move.PutPool();
+						movePackets.Add(move);
 						playerMoveCount++;
 					}
 				}
@@ -847,13 +850,14 @@ namespace MiNET.Worlds
 
 				if (players.Length == 1 && entiyMoveCount == 0) return;
 
-				McpeWrapper batch = BatchUtils.CreateBatchPacket(new Memory<byte>(stream.GetBuffer(), 0, (int) stream.Length), CompressionLevel.Optimal, false);
-				batch.AddReferences(players.Length - 1);
+				if (movePackets.Count == 0) return;
+
+				//McpeWrapper batch = BatchUtils.CreateBatchPacket(new Memory<byte>(stream.GetBuffer(), 0, (int) stream.Length), CompressionLevel.Optimal, false);
+				var batch = McpeWrapper.CreateObject(players.Length);
+				batch.ReliabilityHeader.Reliability = Reliability.ReliableOrdered;
+				batch.payload = Compression.CompressPacketsForWrapper(movePackets);
 				batch.Encode();
-				foreach (var player in players)
-				{
-					MiNetServer.FastThreadPool.QueueUserWorkItem(() => player.SendPacket(batch));
-				}
+				foreach (Player player in players) MiNetServer.FastThreadPool.QueueUserWorkItem(() => player.SendPacket(batch));
 				_lastBroadcast = DateTime.UtcNow;
 			}
 		}
@@ -953,11 +957,11 @@ namespace MiNET.Worlds
 			}
 		}
 
-		public IEnumerable<McpeWrapper> GenerateChunks(ChunkCoordinates chunkPosition, Dictionary<ChunkCoordinates, McpeWrapper> chunksUsed, double radius)
+		public IEnumerable<McpeWrapper> GenerateChunks(ChunkCoordinates chunkPosition, Dictionary<ChunkCoordinates, McpeWrapper> chunksUsed, double radius, Func<Vector3> getCurrentPositionAction = null)
 		{
 			lock (chunksUsed)
 			{
-				Dictionary<ChunkCoordinates, double> newOrders = new Dictionary<ChunkCoordinates, double>();
+				var newOrders = new Dictionary<ChunkCoordinates, double>();
 
 				double radiusSquared = Math.Pow(radius, 2);
 
@@ -994,14 +998,19 @@ namespace MiNET.Worlds
 
 					if (WorldProvider == null) continue;
 
+					if (getCurrentPositionAction != null)
+					{
+						var currentPos = getCurrentPositionAction();
+						var coords = new ChunkCoordinates(currentPos);
+						if(coords.DistanceTo(pair.Key) > radius) continue;
+					}
 					ChunkColumn chunkColumn = GetChunk(pair.Key);
 					McpeWrapper chunk = null;
 					if (chunkColumn != null)
 					{
 						chunk = chunkColumn.GetBatch();
+						chunksUsed.Add(pair.Key, chunk);
 					}
-
-					chunksUsed.Add(pair.Key, chunk);
 
 					yield return chunk;
 				}
@@ -1136,9 +1145,8 @@ namespace MiNET.Worlds
 		{
 			if (block.Coordinates.Y < 0) return;
 
-			ChunkColumn chunk;
 			var chunkCoordinates = new ChunkCoordinates(block.Coordinates.X >> 4, block.Coordinates.Z >> 4);
-			chunk = possibleChunk != null && possibleChunk.X == chunkCoordinates.X && possibleChunk.Z == chunkCoordinates.Z ? possibleChunk : GetChunk(chunkCoordinates);
+			ChunkColumn chunk = possibleChunk != null && possibleChunk.X == chunkCoordinates.X && possibleChunk.Z == chunkCoordinates.Z ? possibleChunk : GetChunk(chunkCoordinates);
 
 
 			if (!OnBlockPlace(new BlockPlaceEventArgs(null, this, block, null)))
@@ -1324,6 +1332,7 @@ namespace MiNET.Worlds
 			Block target = GetBlock(blockCoordinates);
 			if (!player.IsSneaking && target.Interact(this, player, blockCoordinates, face, faceCoords)) return; // Handled in block interaction
 
+			Log.Debug($"Item in hand: {itemInHand}");
 			if (itemInHand is ItemBlock)
 			{
 				Block block = GetBlock(blockCoordinates);
@@ -1480,6 +1489,11 @@ namespace MiNET.Worlds
 		{
 			if (BlockWithTicks.ContainsKey(block.Coordinates)) return;
 			BlockWithTicks[block.Coordinates] = TickTime + tickRate;
+		}
+
+		public void CancelBlockTick(Block block)
+		{
+			BlockWithTicks.TryRemove(block.Coordinates, out _);
 		}
 
 		public bool TryGetEntity<T>(long targetEntityId, out T entity) where T : class

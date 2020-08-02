@@ -84,6 +84,70 @@ namespace TestPlugin
 		//    return packet;
 		//}
 
+		[Command]
+		public string Emote(Player player, string emote)
+		{
+			switch (emote)
+			{
+				case "happy":
+				{
+					var keys = new List<AnimationKey>();
+					int rotation = 15;
+					var start = new Vector3(0, 0, 0);
+					var up = start + new Vector3(-160, 0, 0);
+					keys.Add(CreateAnimationKey(start, up, 500, false, false, false));
+					uint waveDuration = 250;
+					uint waveTwist = 15;
+					keys.Add(CreateAnimationKey(up, up + new Vector3(rotation, 0, waveTwist), waveDuration, false, false, false));
+					for (int i = 0; i < 10; i++)
+					{
+						keys.Add(CreateAnimationKey(up + new Vector3(rotation, 0, waveTwist), up + new Vector3(-rotation, 0, -waveTwist), waveDuration, false, false, false));
+						keys.Add(CreateAnimationKey(up + new Vector3(-rotation, 0, -waveTwist), up + new Vector3(rotation, 0, waveTwist), waveDuration, false, false, false));
+					}
+					keys.Add(CreateAnimationKey(up + new Vector3(rotation, 0, waveTwist), up, waveDuration, false, false, false));
+					keys.Add(CreateAnimationKey(up, start, 300, false, false, false));
+
+					SendAnimation(player, "rightArm", keys.ToArray());
+
+					break;
+				}
+			}
+
+			return $"Did emote: {emote}";
+		}
+
+		private static AnimationKey CreateAnimationKey(Vector3 startRotation, Vector3 endRotation, uint duration, bool executeImmediate, bool resetBefore, bool resetAfter)
+		{
+			return new AnimationKey
+			{
+				ExecuteImmediate = executeImmediate,
+				ResetBefore = resetBefore,
+				ResetAfter = resetAfter,
+				StartRotation = startRotation,
+				EndRotation = endRotation,
+				Duration = duration
+			};
+		}
+
+		private static void SendAnimation(Player player, string boneId, AnimationKey[] keys)
+		{
+			{
+				var animationPacket = McpeAlexEntityAnimation.CreateObject();
+				animationPacket.runtimeEntityId = player.EntityId;
+				animationPacket.boneId = boneId;
+				animationPacket.keys = keys;
+				player.Level.RelayBroadcast(player, animationPacket);
+			}
+
+			{
+				var animationPacket = McpeAlexEntityAnimation.CreateObject();
+				animationPacket.runtimeEntityId = EntityManager.EntityIdSelf;
+				animationPacket.boneId = boneId;
+				animationPacket.keys = keys;
+				player.SendPacket(animationPacket);
+			}
+		}
+
 		[Command(Name = "bossbar")]
 		public void BossbarCommand(Player player)
 		{
@@ -164,13 +228,12 @@ namespace TestPlugin
 
 		[Command(Description = "Save world")]
 		[Authorize(Permission = (int) CommandPermission.Admin)]
-		public void Save(Player player)
+		public string Save(Player player)
 		{
-			AnvilWorldProvider provider = player.Level.WorldProvider as AnvilWorldProvider;
-			if (provider != null)
-			{
-				provider.SaveChunks();
-			}
+			if (!Config.GetProperty("Save.Enabled", false)) return "Save is not enabled. Please check Save.Enabled settings.";
+
+			var provider = player.Level.WorldProvider;
+			return $"Saved {provider?.SaveChunks()} chunks";
 		}
 
 		[Command]
@@ -269,11 +332,13 @@ namespace TestPlugin
 		}
 
 		[Command]
-		public void SpawnNpc(Player player, string text)
+		public void SpawnNpc(Player player, string text, Npc.NpcTypes skinType, string dialogText)
 		{
 			Npc npc = new Npc(player.Level);
 			npc.KnownPosition = (PlayerLocation) player.KnownPosition.Clone();
 			npc.NameTag = text;
+			npc.NpcSkinType = skinType;
+			npc.DialogText = dialogText;
 			npc.SpawnEntity();
 		}
 
@@ -436,6 +501,42 @@ namespace TestPlugin
 				player.CleanCache();
 				player.ForcedSendChunks(() => { player.SendMessage($"Resent chunks."); });
 			});
+		}
+
+		[Command(Description = "Hack to replace the nether biome id of the current chunk and resend it")]
+		public string ResendChunksForNether(Player player)
+		{
+			if (player.Level.Dimension != Dimension.Nether)
+			{
+				return "Can only use this command in the nether or it will crash the client.";
+			}
+			Task.Run(() =>
+			{
+				RewriteBiome(player);
+				//player.CleanCache();
+				player.ForcedSendChunks(() => { player.SendMessage($"Resent chunks."); });
+			});
+
+			return "Running command to update chunk";
+		}
+
+		private void RewriteBiome(Player player)
+		{
+			var level = player.Level;
+			var chunk =level.GetChunk(player.KnownPosition.GetCoordinates3D());
+
+			//var biomeIds = new byte[] {8, 170, 171, 172, 173};
+			var biomeIds = new byte[] {8, 170, 171, 172, 173};
+			byte biomeId = biomeIds[new Random().Next(biomeIds.Length)];
+			for (int i = 0; i < chunk.biomeId.Length; i++)
+			{
+				chunk.biomeId[i] = biomeId;
+			}
+
+			chunk.IsDirty = true;
+			Log.Error($"Changing biome to {biomeId}");
+			player.CleanCache(chunk);
+			player.SendMessage($"Changing biome to {biomeId}");
 		}
 
 		[Command(Aliases = new[] {"cslc"})]
@@ -964,6 +1065,66 @@ namespace TestPlugin
 			player.Level.BroadcastMessage(string.Format("Player {0} changed kit.", player.Username), type: MessageType.Raw);
 		}
 
+
+		[Command]
+		public void EnchantingKit(Player player)
+		{
+			var inventory = player.Inventory;
+
+			byte slot = 0;
+			inventory.Slots[slot++] = new ItemBlock(new EnchantingTable()) {Count = 64};
+			inventory.Slots[slot++] = new ItemBlock(new Anvil()) {Count = 64};
+			inventory.Slots[slot++] = new ItemBlock(new CraftingTable()) {Count = 64};
+			player.Inventory.Slots[slot++] = new ItemDye()
+			{
+				Metadata = 4,
+				Count = 64
+			};
+
+			inventory.Slots[slot++] = new ItemIronSword();
+			inventory.Slots[slot++] = new ItemGoldenSword();
+			inventory.Slots[slot++] = new ItemDiamondSword();
+			inventory.Slots[slot++] = new ItemIronHelmet();
+			inventory.Slots[slot++] = new ItemGoldenHelmet();
+			inventory.Slots[slot++] = new ItemDiamondHelmet();
+			inventory.Slots[slot++] = new ItemIronChestplate();
+			inventory.Slots[slot++] = new ItemDiamondChestplate();
+			inventory.Slots[slot++] = new ItemIronBoots();
+			inventory.Slots[slot++] = new ItemGoldenBoots();
+			inventory.Slots[slot++] = new ItemDiamondBoots();
+
+			inventory.Slots[slot++] = new ItemIronSword();
+			inventory.Slots[slot++] = new ItemIronSword();
+			inventory.Slots[slot++] = new ItemIronSword();
+			inventory.Slots[slot++] = new ItemIronSword();
+
+			inventory.Slots[slot++] = new ItemGoldenSword();
+			inventory.Slots[slot++] = new ItemGoldenSword();
+			inventory.Slots[slot++] = new ItemGoldenSword();
+			inventory.Slots[slot++] = new ItemGoldenSword();
+
+			inventory.Slots[slot++] = new ItemDiamondSword();
+			inventory.Slots[slot++] = new ItemDiamondSword();
+			inventory.Slots[slot++] = new ItemDiamondSword();
+			inventory.Slots[slot++] = new ItemDiamondSword();
+
+			inventory.Slots[slot++] = new ItemDiamondPickaxe();
+			inventory.Slots[slot++] = new ItemDiamondPickaxe();
+			inventory.Slots[slot++] = new ItemDiamondPickaxe();
+
+			inventory.Slots[slot++] = new ItemGoldenPickaxe();
+			inventory.Slots[slot++] = new ItemGoldenPickaxe();
+			inventory.Slots[slot++] = new ItemGoldenPickaxe();
+			inventory.Slots[slot++] = new ItemGoldenPickaxe();
+			inventory.Slots[slot++] = new ItemGoldenPickaxe();
+
+			player.SendPlayerInventory();
+			SendEquipmentForPlayer(player);
+			SendArmorForPlayer(player);
+
+			player.Level.BroadcastMessage(string.Format("Player {0} changed kit.", player.Username), type: MessageType.Raw);
+		}
+
 		[Command]
 		public void Kit(Player player, int kitId)
 		{
@@ -980,10 +1141,10 @@ namespace TestPlugin
 					break;
 				case 1:
 					// Kit gold tier
-					inventory.Boots = new ItemGoldBoots();
-					inventory.Leggings = new ItemGoldLeggings();
-					inventory.Chest = new ItemGoldChestplate();
-					inventory.Helmet = new ItemGoldHelmet();
+					inventory.Boots = new ItemGoldenBoots();
+					inventory.Leggings = new ItemGoldenLeggings();
+					inventory.Chest = new ItemGoldenChestplate();
+					inventory.Helmet = new ItemGoldenHelmet();
 					break;
 				case 2:
 					// Kit chain tier
@@ -1099,6 +1260,7 @@ namespace TestPlugin
 					}
 				}
 			};
+			inventory.Slots[c++] = new ItemBlock(new Anvil(), 0) {Count = 64};
 			inventory.Slots[c++] = new ItemBlock(new EnchantingTable(), 0) {Count = 64};
 			inventory.Slots[c++] = ItemFactory.GetItem(351, 4, 64);
 			inventory.Slots[c++] = new ItemBlock(new Planks(), 0) {Count = 64};
@@ -1108,7 +1270,7 @@ namespace TestPlugin
 			inventory.Slots[c++] = new ItemGoldenSword(); // Golden Sword
 			inventory.Slots[c++] = new ItemIronSword(); // Iron Sword
 			inventory.Slots[c++] = new ItemDiamondSword(); // Diamond Sword
-			inventory.Slots[c++] = new ItemArrow {Count = 64}; // Arrows
+			inventory.Slots[c++] = new ItemArrow {Count = 64, UniqueId = Environment.TickCount}; // Arrows
 			inventory.Slots[c++] = new ItemEgg {Count = 64}; // Eggs
 			inventory.Slots[c++] = new ItemSnowball {Count = 64}; // Snowballs
 			inventory.Slots[c++] = new ItemIronSword

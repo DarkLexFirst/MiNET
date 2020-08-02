@@ -27,11 +27,11 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using fNbt;
 using log4net;
 using MiNET.Blocks;
@@ -61,6 +61,7 @@ namespace MiNET.Worlds
 		public bool IsDirty { get; set; }
 		public bool NeedSave { get; set; }
 
+		public bool DisableCache { get; set; }
 		private McpeWrapper _cachedBatch;
 		private object _cacheSync = new object();
 
@@ -100,6 +101,11 @@ namespace MiNET.Worlds
 				return subChunk;
 			}
 			set => _subChunks[chunkIndex] = value;
+		}
+
+		public int Count()
+		{
+			return _subChunks.Count(s => s != null);
 		}
 
 		public SubChunk GetSubChunk(int by)
@@ -285,6 +291,45 @@ namespace MiNET.Worlds
 			return Color.FromArgb(color);
 		}
 
+		public static unsafe void FastFill<T>(ref T[] data, T value2, ulong value) where T : unmanaged
+		{
+			fixed (T* shorts = data)
+			{
+				byte* bytes = (byte*) shorts;
+				int len = data.Length * sizeof(T);
+				int rem = len % (sizeof(long) * 16);
+				ulong* b = (ulong*) bytes;
+				ulong* e = (ulong*) (shorts + len - rem);
+
+				while (b < e)
+				{
+					*(b) = value;
+					*(b + 1) = value;
+					*(b + 2) = value;
+					*(b + 3) = value;
+					*(b + 4) = value;
+					*(b + 5) = value;
+					*(b + 6) = value;
+					*(b + 7) = value;
+					*(b + 8) = value;
+					*(b + 9) = value;
+					*(b + 10) = value;
+					*(b + 11) = value;
+					*(b + 12) = value;
+					*(b + 13) = value;
+					*(b + 14) = value;
+					*(b + 15) = value;
+					b += 16;
+				}
+
+				for (int i = 0; i < rem; i++)
+				{
+					data[len - 1 - i] = value2;
+				}
+			}
+		}
+
+
 		public static void Fill<T>(T[] destinationArray, params T[] value)
 		{
 			if (destinationArray == null)
@@ -416,44 +461,24 @@ namespace MiNET.Worlds
 		{
 			lock (_cacheSync)
 			{
-				if (!IsDirty && _cachedBatch != null) return _cachedBatch;
-
-				var sw = Stopwatch.StartNew();
+				if (!DisableCache && !IsDirty && _cachedBatch != null) return _cachedBatch;
 
 				ClearCache();
 
-				var fullChunkData = McpeLevelChunk.CreateObject();
-				fullChunkData.chunkX = X;
-				fullChunkData.chunkZ = Z;
-
 				int topEmpty = GetTopEmpty();
-				fullChunkData.subChunkCount = (uint) topEmpty;
+				byte[] chunkData = GetBytes(topEmpty);
 
-				//TODO: Implement client-side caching
-				fullChunkData.cacheEnabled = false;
-
-				var chunkData = GetBytes(topEmpty);
-
-				fullChunkData.chunkData = chunkData;
-				byte[] bytes = fullChunkData.Encode();
-
-				fullChunkData.PutPool();
-
-				var fullChunkSize = bytes.Length;
-				averageSize = ((averageSize * count) + fullChunkSize) / (count + 1);
+				var fullChunkPacket = McpeLevelChunk.CreateObject();
+				fullChunkPacket.cacheEnabled = false;
+				fullChunkPacket.chunkX = X;
+				fullChunkPacket.chunkZ = Z;
+				fullChunkPacket.subChunkCount = (uint) topEmpty;
+				fullChunkPacket.chunkData = chunkData;
+				byte[] bytes = fullChunkPacket.Encode();
+				fullChunkPacket.PutPool();
 
 				McpeWrapper batch = BatchUtils.CreateBatchPacket(new Memory<byte>(bytes, 0, bytes.Length), CompressionLevel.Fastest, true);
 				batch.MarkPermanent();
-				var wrapperData = batch.Encode();
-
-				long elapsted = sw.ElapsedTicks;
-				average = ((average * count) + elapsted) / (count + 1);
-
-				var wrapperSize = wrapperData.Length;
-				averageCompressedSize = ((averageCompressedSize * count) + wrapperSize) / (count + 1);
-
-
-				//Log.Debug($"Serialized in {elapsted / (float)TimeSpan.TicksPerMillisecond:F4} ms, Average={average / (float)TimeSpan.TicksPerMillisecond:F4}, fcsize={averageSize:F0}, wsize={averageCompressedSize:F0}");
 
 				_cachedBatch = batch;
 				IsDirty = false;
@@ -515,7 +540,9 @@ namespace MiNET.Worlds
 			return stream.ToArray();
 		}
 
-		private int GetTopEmpty()
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		internal int GetTopEmpty()
 		{
 			int topEmpty = 16;
 			for (int ci = 15; ci >= 0; ci--)

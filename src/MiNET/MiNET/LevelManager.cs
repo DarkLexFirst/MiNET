@@ -61,7 +61,10 @@ namespace MiNET
 				switch (Config.GetProperty("WorldProvider", "anvil").ToLower().Trim())
 				{
 					case "leveldb":
-						worldProvider = new LevelDbProvider();
+						worldProvider = new LevelDbProvider()
+						{
+							MissingChunkProvider = Generator,
+						};
 						break;
 					case "cool":
 						worldProvider = new CoolWorldProvider();
@@ -87,7 +90,7 @@ namespace MiNET
 					EnableBlockTicking = Config.GetProperty("EnableBlockTicking", false),
 					EnableChunkTicking = Config.GetProperty("EnableChunkTicking", false),
 					SaveInterval = Config.GetProperty("Save.Interval", 300),
-					UnloadInterval = Config.GetProperty("Unload.Interval", -1),
+					UnloadInterval = Config.GetProperty("Unload.Interval", 0),
 
 					DrowningDamage = Config.GetProperty("GameRule.DrowningDamage", true),
 					CommandblockOutput = Config.GetProperty("GameRule.CommandblockOutput", true),
@@ -178,13 +181,39 @@ namespace MiNET
 			if (dimension == Dimension.Nether && !level.WorldProvider.HaveNether()) return null;
 			if (dimension == Dimension.TheEnd && !level.WorldProvider.HaveTheEnd()) return null;
 
-			AnvilWorldProvider overworld = level.WorldProvider as AnvilWorldProvider;
-			if (overworld == null) return null;
-
-			var worldProvider = new AnvilWorldProvider(overworld.BasePath)
+			switch (level.WorldProvider)
 			{
-				ReadBlockLight = overworld.ReadBlockLight,
-				ReadSkyLight = overworld.ReadSkyLight,
+				case AnvilWorldProvider anvilWorldProvider:
+					return GetDimensionForAnvilProvider(level, dimension, anvilWorldProvider);
+					break;
+				case LevelDbProvider levelDbProvider:
+					return GetDimensionForLevelDbProvider(level, dimension, levelDbProvider);
+					break;
+			}
+
+			//if (Config.GetProperty("CalculateLights", false))
+			//{
+			//	worldProvider.Locked = true;
+			//	SkyLightCalculations.Calculate(newLevel);
+
+			//	int count = worldProvider.LightSources.Count;
+			//	Log.Debug($"Recalculating block light for {count} light sources.");
+			//	Stopwatch sw = new Stopwatch();
+			//	sw.Start();
+			//	RecalculateBlockLight(newLevel, worldProvider);
+
+			//	var chunkCount = worldProvider._chunkCache.Where(chunk => chunk.Value != null).ToArray().Length;
+			//	Log.Debug($"Recalc sky and block light for {chunkCount} chunks, {chunkCount*16*16*256} blocks and {count} light sources. Time {sw.ElapsedMilliseconds}ms");
+			//	worldProvider.Locked = false;
+			//}
+
+			return null;
+		}
+
+		private Level GetDimensionForLevelDbProvider(Level level, Dimension dimension, LevelDbProvider overworld)
+		{
+			var worldProvider = new LevelDbProvider(overworld.Db)
+			{
 				Dimension = dimension,
 				MissingChunkProvider = new SuperflatGenerator(dimension),
 			};
@@ -197,7 +226,6 @@ namespace MiNET
 				EnableChunkTicking = level.EnableChunkTicking,
 				SaveInterval = level.SaveInterval,
 				UnloadInterval = level.UnloadInterval,
-
 				DrowningDamage = level.DrowningDamage,
 				CommandblockOutput = level.CommandblockOutput,
 				DoTiledrops = level.DoTiledrops,
@@ -221,21 +249,49 @@ namespace MiNET
 
 			newLevel.Initialize();
 
-			//if (Config.GetProperty("CalculateLights", false))
-			//{
-			//	worldProvider.Locked = true;
-			//	SkyLightCalculations.Calculate(newLevel);
+			return newLevel;
+		}
 
-			//	int count = worldProvider.LightSources.Count;
-			//	Log.Debug($"Recalculating block light for {count} light sources.");
-			//	Stopwatch sw = new Stopwatch();
-			//	sw.Start();
-			//	RecalculateBlockLight(newLevel, worldProvider);
+		private Level GetDimensionForAnvilProvider(Level level, Dimension dimension, AnvilWorldProvider overworld)
+		{
+			var worldProvider = new AnvilWorldProvider(overworld.BasePath)
+			{
+				ReadBlockLight = overworld.ReadBlockLight,
+				ReadSkyLight = overworld.ReadSkyLight,
+				Dimension = dimension,
+				MissingChunkProvider = new SuperflatGenerator(dimension),
+			};
 
-			//	var chunkCount = worldProvider._chunkCache.Where(chunk => chunk.Value != null).ToArray().Length;
-			//	Log.Debug($"Recalc sky and block light for {chunkCount} chunks, {chunkCount*16*16*256} blocks and {count} light sources. Time {sw.ElapsedMilliseconds}ms");
-			//	worldProvider.Locked = false;
-			//}
+			Level newLevel = new Level(level.LevelManager, level.LevelId + "_" + dimension, worldProvider, EntityManager, level.GameMode, level.Difficulty, level.ViewDistance)
+			{
+				OverworldLevel = level,
+				Dimension = dimension,
+				EnableBlockTicking = level.EnableBlockTicking,
+				EnableChunkTicking = level.EnableChunkTicking,
+				SaveInterval = level.SaveInterval,
+				UnloadInterval = level.UnloadInterval,
+				DrowningDamage = level.DrowningDamage,
+				CommandblockOutput = level.CommandblockOutput,
+				DoTiledrops = level.DoTiledrops,
+				DoMobloot = level.DoMobloot,
+				KeepInventory = level.KeepInventory,
+				DoDaylightcycle = level.DoDaylightcycle,
+				DoMobspawning = level.DoMobspawning,
+				DoEntitydrops = level.DoEntitydrops,
+				DoFiretick = level.DoFiretick,
+				DoWeathercycle = level.DoWeathercycle,
+				Pvp = level.Pvp,
+				Falldamage = level.Falldamage,
+				Firedamage = level.Firedamage,
+				Mobgriefing = level.Mobgriefing,
+				ShowCoordinates = level.ShowCoordinates,
+				NaturalRegeneration = level.NaturalRegeneration,
+				TntExplodes = level.TntExplodes,
+				SendCommandfeedback = level.SendCommandfeedback,
+				RandomTickSpeed = level.RandomTickSpeed,
+			};
+
+			newLevel.Initialize();
 
 			return newLevel;
 		}
@@ -258,9 +314,12 @@ namespace MiNET
 			Parallel.For(0, numberOfLevels, i =>
 			{
 				var name = "Default" + i;
-				//Levels.Add(CreateLevel(name, template._worldProvider));
-				Levels.Add(CreateLevel(name, null));
-				Log.Warn($"Created level {name}");
+				Level level = CreateLevel(name, null);
+				lock (Levels)
+				{
+					Levels.Add(level);
+					Log.Warn($"Created level {name}");
+				}
 			});
 
 			Log.Warn("DONE Creating and caching worlds");
@@ -268,9 +327,14 @@ namespace MiNET
 
 		public override Level GetLevel(Player player, string name)
 		{
-			Random rand = new Random();
+			var rand = new Random();
 
 			return Levels[rand.Next(0, _numberOfLevels)];
+		}
+
+		public override Level GetDimension(Level level, Dimension dimension)
+		{
+			return null;
 		}
 
 		public virtual Level CreateLevel(string name, IWorldProvider provider)

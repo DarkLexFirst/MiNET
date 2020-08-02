@@ -44,11 +44,12 @@ namespace MiNET.Items
 
 		[JsonIgnore] public Block Block { get; protected set; }
 
-		protected ItemBlock(short id, short metadata = 0) : base(id, metadata)
+		protected ItemBlock(string name, short id, short metadata = 0) : base(name, id, metadata)
 		{
+			//TODO: Problematic block
 		}
 
-		public ItemBlock([NotNull] Block block, short metadata = 0) : base((short) (block.Id > 255 ? 255 - block.Id : block.Id), metadata)
+		public ItemBlock([NotNull] Block block, short metadata = 0) : base(block.Name, (short) (block.Id > 255 ? 255 - block.Id : block.Id), metadata)
 		{
 			Block = block ?? throw new ArgumentNullException(nameof(block));
 	
@@ -63,18 +64,6 @@ namespace MiNET.Items
 		public override Item GetSmelt()
 		{
 			return Block.GetSmelt();
-		}
-
-		public static int GetDirectionFromEntity(Entity entity)
-		{
-			return entity.GetDirectionEmum() switch
-			{
-				Entity.Direction.South => 1,
-				Entity.Direction.West => 3,
-				Entity.Direction.North => 0,
-				Entity.Direction.East => 2,
-				_ => throw new ArgumentOutOfRangeException()
-			};
 		}
 
 		public static int GetFacingDirectionFromEntity(Entity entity)
@@ -141,7 +130,7 @@ namespace MiNET.Items
 
 		public override string ToString()
 		{
-			return $"{GetType().Name}(Id={Id}, Meta={Metadata})[{Block?.GetType().Name}] Count={Count}, NBT={ExtraData}";
+			return $"{GetType().Name}(Id={Id}, Meta={Metadata}, UniqueId={UniqueId}) {{Block={Block?.GetType().Name}}} Count={Count}, NBT={ExtraData}";
 		}
 	}
 }

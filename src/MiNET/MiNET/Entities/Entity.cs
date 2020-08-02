@@ -226,7 +226,7 @@ namespace MiNET.Entities
 					}
 					case 5:
 					{
-						var e = (MetadataSlot) entry;
+						var e = (MetadataNbt) entry;
 						sb.Append($"{e.GetType().Name}({e.Value});");
 						break;
 					}
@@ -641,9 +641,26 @@ namespace MiNET.Entities
 			return Vector3.Distance(KnownPosition, entity.KnownPosition);
 		}
 
+		public byte GetOppositeDirection()
+		{
+			return (byte) ((GetDirection() + 1) % 4);
+		}
+
 		public byte GetDirection()
 		{
 			return DirectionByRotationFlat(KnownPosition.Yaw);
+		}
+
+		public byte GetProperDirection()
+		{
+			return DirectionByRotationFlat(KnownPosition.Yaw) switch
+			{
+				0 => 0, // East
+				1 => 2, // South
+				2 => 1, // West
+				3 => 3, // North
+				_ => 0
+			};
 		}
 
 		public enum Direction
@@ -652,6 +669,14 @@ namespace MiNET.Entities
 			West = 1,
 			North = 2,
 			East = 3,
+		}
+
+		public enum ProperDirection
+		{
+			East = 0,
+			West = 1,
+			South = 2,
+			North = 3,
 		}
 
 		public Direction GetDirectionEmum()
@@ -663,18 +688,14 @@ namespace MiNET.Entities
 		public static byte DirectionByRotationFlat(float yaw)
 		{
 			byte direction = (byte) ((int) Math.Floor((yaw * 4F) / 360F + 0.5D) & 0x03);
-			switch (direction)
+			return direction switch
 			{
-				case 0:
-					return 1; // West
-				case 1:
-					return 2; // North
-				case 2:
-					return 3; // East
-				case 3:
-					return 0; // South 
-			}
-			return 0;
+				0 => 1,
+				1 => 2,
+				2 => 3,
+				3 => 0,
+				_ => 0
+			};
 		}
 
 		public virtual void Knockback(Vector3 velocity)

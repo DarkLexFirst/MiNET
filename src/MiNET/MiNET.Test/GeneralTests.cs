@@ -24,6 +24,7 @@
 #endregion
 
 using System;
+using System.Buffers.Text;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -31,6 +32,8 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using fNbt;
 using log4net;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MiNET.Blocks;
@@ -45,6 +48,157 @@ namespace MiNET.Test
 	public class GeneralTests
 	{
 		private static readonly ILog Log = LogManager.GetLogger(typeof(GeneralTests));
+#if DEBUG
+		private int _iterations = 100_000;
+#else
+		private int _iterations = 10_000_000;
+#endif
+		[TestMethod]
+		public void Check_all_air_base_test()
+		{
+			var buffer = new byte[10_000].Concat(new byte[] {42}).ToArray();
+
+			for (int k = 0; k < _iterations; k++)
+			{
+				bool foundNonZero = false;
+				for (int i = 0; i < buffer.Length; i++)
+				{
+					if (buffer[i] != 0)
+					{
+						foundNonZero = true;
+						break;
+					}
+				}
+				Assert.IsTrue(foundNonZero);
+			}
+		}
+
+		[TestMethod]
+		public void Check_all_air_fast_test()
+		{
+			var buffer = new short[10_000].Concat(new short[] {42}).ToArray();
+			for (int i = 0; i < _iterations; i++)
+			{
+				Assert.IsFalse(SubChunk.AllZeroFast(buffer));
+			}
+		}
+
+		[TestMethod]
+		public void Check_all_air_vector_test()
+		{
+			Assert.IsTrue(Vector.IsHardwareAccelerated);
+
+			var buffer = new byte[10_000].Concat(new byte[] {42}).ToArray();
+
+			for (int i = 0; i < _iterations; i++)
+			{
+				bool foundNonZero = false;
+				int remainingStart = 0;
+				while (remainingStart <= buffer.Length - Vector<byte>.Count)
+				{
+					var vector = new Vector<byte>(buffer, remainingStart);
+					if (!Vector.EqualsAll(vector, default))
+					{
+						break;
+					}
+					remainingStart += Vector<byte>.Count;
+				}
+
+				for (int j = remainingStart; j < buffer.Length; j++)
+				{
+					if (buffer[j] != 0)
+					{
+						foundNonZero = true;
+						break;
+					}
+				}
+				Assert.IsTrue(foundNonZero);
+			}
+		}
+
+		[TestMethod]
+		public void Check_all_air_long_test()
+		{
+			var buffer = new byte[10_000].Concat(new byte[] {42}).ToArray();
+
+			for (int k = 0; k < _iterations; k++)
+			{
+				int remainingStart = 0;
+				bool foundNonZero = false;
+				if (IntPtr.Size == sizeof(long))
+				{
+					Span<long> longBuffer = MemoryMarshal.Cast<byte, long>(buffer);
+					remainingStart = longBuffer.Length * sizeof(long);
+
+					for (int i = 0; i < longBuffer.Length; i++)
+					{
+						if (longBuffer[i] != 0)
+						{
+							remainingStart = i * sizeof(long);
+							break;
+						}
+					}
+				}
+
+				for (int i = remainingStart; i < buffer.Length; i++)
+				{
+					if (buffer[i] != 0)
+					{
+						foundNonZero = true;
+						break;
+					}
+				}
+				Assert.IsTrue(foundNonZero);
+			}
+		}
+
+		[TestMethod]
+		public void ZeroValueDetectSse()
+		{
+			var buffer = new byte[10_000].Concat(new byte[] { 42 }).ToArray();
+			for (int k = 0; k < _iterations; k++)
+			{
+				bool foundNonZero = false;
+				int concurrentAmount = 4;
+				int startIndex = 0;
+				int endIndex = buffer.Length -1;
+				int sseIndexEnd = startIndex + ((endIndex - startIndex + 1) / (Vector<byte>.Count * concurrentAmount)) * (Vector<byte>.Count * concurrentAmount);
+				int i;
+				int offset1 = Vector<byte>.Count;
+				int offset2 = Vector<byte>.Count * 2;
+				int offset3 = Vector<byte>.Count * 3;
+				int increment = Vector<byte>.Count * concurrentAmount;
+				for (i = startIndex; i < sseIndexEnd; i += increment)
+				{
+					var inVector = new Vector<byte>(buffer, i);
+					inVector |= new Vector<byte>(buffer, i + offset1);
+					inVector |= new Vector<byte>(buffer, i + offset2);
+					inVector |= new Vector<byte>(buffer, i + offset3);
+					if (!Vector.EqualsAll(inVector, default))
+					{
+						foundNonZero = true;
+						break;
+					}
+				}
+
+				if(foundNonZero) continue;
+
+				byte overallOr = 0;
+				for (; i <= endIndex; i++)
+					overallOr |= buffer[i];
+				foundNonZero = overallOr != 0;
+				//for (; i <= endIndex; i++)
+				//{
+				//	if (buffer[i] != 0)
+				//	{
+				//		foundNonZero = true;
+				//		break;
+				//	}
+				//}
+
+				Assert.IsTrue(foundNonZero);
+			}
+		}
 
 		[TestMethod]
 		public void DeltaEncodeTest()
@@ -60,7 +214,7 @@ namespace MiNET.Test
 		}
 
 		[TestMethod]
-		public void EncodePalettedChunk()
+		public void EncodePaletteChunk()
 		{
 			var blocks = new short[4096];
 			var random = new Random();
@@ -339,12 +493,24 @@ namespace MiNET.Test
 
 			ChunkColumn.Fill<byte>(array, 0xff);
 			var sw = Stopwatch.StartNew();
-			int iterations = 100000;
+			int iterations = _iterations;
 			for (int i = 0; i < iterations; i++)
 			{
 				ChunkColumn.Fill<byte>(array, 0xff);
 			}
 			Console.WriteLine($"My fill {sw.ElapsedMilliseconds}ms");
+
+			ChunkColumn.FastFill<byte>(ref array, 0xff, ulong.MaxValue);
+			sw.Restart();
+			for (int i = 0; i < iterations; i++)
+			{
+				ChunkColumn.FastFill<byte>(ref array, 0xff, ulong.MaxValue);
+			}
+			Console.WriteLine($"My fast fill {sw.ElapsedMilliseconds}ms");
+			foreach (byte t in array)
+			{
+				Assert.AreEqual(0xff, t);
+			}
 
 			Array.Fill<byte>(array, 0xff);
 			sw.Restart();
@@ -510,7 +676,7 @@ namespace MiNET.Test
 
 			packet = new McpeMoveEntityDelta();
 			packet.prevSentPosition = prev;
-			packet.Decode(bytes.AsSpan(1, bytes.Length - 1).ToArray());
+			packet.Decode(bytes.AsMemory());
 
 			Assert.AreEqual(packet.runtimeEntityId, 0x0102030405);
 
@@ -548,5 +714,39 @@ namespace MiNET.Test
 
 			Assert.AreEqual(13f, converted);
 		}
+
+		[TestMethod]
+		public void NbtBiomeParseTest()
+		{
+			string base64 = "CgAKDWJhbWJvb19qdW5nbGUFCGRvd25mYWxsZmZmPwULdGVtcGVyYXR1cmUzM3M/AAoTYmFtYm9vX2p1bmdsZV9oaWxscwUIZG93bmZhbGxmZmY/BQt0ZW1wZXJhdHVyZTMzcz8ACgViZWFjaAUIZG93bmZhbGzNzMw+BQt0ZW1wZXJhdHVyZc3MTD8ACgxiaXJjaF9mb3Jlc3QFCGRvd25mYWxsmpkZPwULdGVtcGVyYXR1cmWamRk/AAoSYmlyY2hfZm9yZXN0X2hpbGxzBQhkb3duZmFsbJqZGT8FC3RlbXBlcmF0dXJlmpkZPwAKGmJpcmNoX2ZvcmVzdF9oaWxsc19tdXRhdGVkBQhkb3duZmFsbM3MTD8FC3RlbXBlcmF0dXJlMzMzPwAKFGJpcmNoX2ZvcmVzdF9tdXRhdGVkBQhkb3duZmFsbM3MTD8FC3RlbXBlcmF0dXJlMzMzPwAKCmNvbGRfYmVhY2gFCGRvd25mYWxsmpmZPgULdGVtcGVyYXR1cmXNzEw9AAoKY29sZF9vY2VhbgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAD8ACgpjb2xkX3RhaWdhBQhkb3duZmFsbM3MzD4FC3RlbXBlcmF0dXJlAAAAvwAKEGNvbGRfdGFpZ2FfaGlsbHMFCGRvd25mYWxszczMPgULdGVtcGVyYXR1cmUAAAC/AAoSY29sZF90YWlnYV9tdXRhdGVkBQhkb3duZmFsbM3MzD4FC3RlbXBlcmF0dXJlAAAAvwAKD2RlZXBfY29sZF9vY2VhbgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAD8AChFkZWVwX2Zyb3plbl9vY2VhbgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAAAAChNkZWVwX2x1a2V3YXJtX29jZWFuBQhkb3duZmFsbAAAAD8FC3RlbXBlcmF0dXJlAAAAPwAKCmRlZXBfb2NlYW4FCGRvd25mYWxsAAAAPwULdGVtcGVyYXR1cmUAAAA/AAoPZGVlcF93YXJtX29jZWFuBQhkb3duZmFsbAAAAD8FC3RlbXBlcmF0dXJlAAAAPwAKBmRlc2VydAUIZG93bmZhbGwAAAAABQt0ZW1wZXJhdHVyZQAAAEAACgxkZXNlcnRfaGlsbHMFCGRvd25mYWxsAAAAAAULdGVtcGVyYXR1cmUAAABAAAoOZGVzZXJ0X211dGF0ZWQFCGRvd25mYWxsAAAAAAULdGVtcGVyYXR1cmUAAABAAAoNZXh0cmVtZV9oaWxscwUIZG93bmZhbGyamZk+BQt0ZW1wZXJhdHVyZc3MTD4AChJleHRyZW1lX2hpbGxzX2VkZ2UFCGRvd25mYWxsmpmZPgULdGVtcGVyYXR1cmXNzEw+AAoVZXh0cmVtZV9oaWxsc19tdXRhdGVkBQhkb3duZmFsbJqZmT4FC3RlbXBlcmF0dXJlzcxMPgAKGGV4dHJlbWVfaGlsbHNfcGx1c190cmVlcwUIZG93bmZhbGyamZk+BQt0ZW1wZXJhdHVyZc3MTD4ACiBleHRyZW1lX2hpbGxzX3BsdXNfdHJlZXNfbXV0YXRlZAUIZG93bmZhbGyamZk+BQt0ZW1wZXJhdHVyZc3MTD4ACg1mbG93ZXJfZm9yZXN0BQhkb3duZmFsbM3MTD8FC3RlbXBlcmF0dXJlMzMzPwAKBmZvcmVzdAUIZG93bmZhbGzNzEw/BQt0ZW1wZXJhdHVyZTMzMz8ACgxmb3Jlc3RfaGlsbHMFCGRvd25mYWxszcxMPwULdGVtcGVyYXR1cmUzMzM/AAoMZnJvemVuX29jZWFuBQhkb3duZmFsbAAAAD8FC3RlbXBlcmF0dXJlAAAAAAAKDGZyb3plbl9yaXZlcgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAAAACgRoZWxsBQhkb3duZmFsbAAAAAAFC3RlbXBlcmF0dXJlAAAAQAAKDWljZV9tb3VudGFpbnMFCGRvd25mYWxsAAAAPwULdGVtcGVyYXR1cmUAAAAAAAoKaWNlX3BsYWlucwUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAAAAChFpY2VfcGxhaW5zX3NwaWtlcwUIZG93bmZhbGwAAIA/BQt0ZW1wZXJhdHVyZQAAAAAACgZqdW5nbGUFCGRvd25mYWxsZmZmPwULdGVtcGVyYXR1cmUzM3M/AAoLanVuZ2xlX2VkZ2UFCGRvd25mYWxszcxMPwULdGVtcGVyYXR1cmUzM3M/AAoTanVuZ2xlX2VkZ2VfbXV0YXRlZAUIZG93bmZhbGzNzEw/BQt0ZW1wZXJhdHVyZTMzcz8ACgxqdW5nbGVfaGlsbHMFCGRvd25mYWxsZmZmPwULdGVtcGVyYXR1cmUzM3M/AAoOanVuZ2xlX211dGF0ZWQFCGRvd25mYWxsZmZmPwULdGVtcGVyYXR1cmUzM3M/AAoTbGVnYWN5X2Zyb3plbl9vY2VhbgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAAAACg5sdWtld2FybV9vY2VhbgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAD8ACgptZWdhX3RhaWdhBQhkb3duZmFsbM3MTD8FC3RlbXBlcmF0dXJlmpmZPgAKEG1lZ2FfdGFpZ2FfaGlsbHMFCGRvd25mYWxszcxMPwULdGVtcGVyYXR1cmWamZk+AAoEbWVzYQUIZG93bmZhbGwAAAAABQt0ZW1wZXJhdHVyZQAAAEAACgptZXNhX2JyeWNlBQhkb3duZmFsbAAAAAAFC3RlbXBlcmF0dXJlAAAAQAAKDG1lc2FfcGxhdGVhdQUIZG93bmZhbGwAAAAABQt0ZW1wZXJhdHVyZQAAAEAAChRtZXNhX3BsYXRlYXVfbXV0YXRlZAUIZG93bmZhbGwAAAAABQt0ZW1wZXJhdHVyZQAAAEAAChJtZXNhX3BsYXRlYXVfc3RvbmUFCGRvd25mYWxsAAAAAAULdGVtcGVyYXR1cmUAAABAAAoabWVzYV9wbGF0ZWF1X3N0b25lX211dGF0ZWQFCGRvd25mYWxsAAAAAAULdGVtcGVyYXR1cmUAAABAAAoPbXVzaHJvb21faXNsYW5kBQhkb3duZmFsbAAAgD8FC3RlbXBlcmF0dXJlZmZmPwAKFW11c2hyb29tX2lzbGFuZF9zaG9yZQUIZG93bmZhbGwAAIA/BQt0ZW1wZXJhdHVyZWZmZj8ACgVvY2VhbgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAD8ACgZwbGFpbnMFCGRvd25mYWxszczMPgULdGVtcGVyYXR1cmXNzEw/AAobcmVkd29vZF90YWlnYV9oaWxsc19tdXRhdGVkBQhkb3duZmFsbM3MTD8FC3RlbXBlcmF0dXJlmpmZPgAKFXJlZHdvb2RfdGFpZ2FfbXV0YXRlZAUIZG93bmZhbGzNzEw/BQt0ZW1wZXJhdHVyZQAAgD4ACgVyaXZlcgUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZQAAAD8ACg1yb29mZWRfZm9yZXN0BQhkb3duZmFsbM3MTD8FC3RlbXBlcmF0dXJlMzMzPwAKFXJvb2ZlZF9mb3Jlc3RfbXV0YXRlZAUIZG93bmZhbGzNzEw/BQt0ZW1wZXJhdHVyZTMzMz8ACgdzYXZhbm5hBQhkb3duZmFsbAAAAAAFC3RlbXBlcmF0dXJlmpmZPwAKD3NhdmFubmFfbXV0YXRlZAUIZG93bmZhbGwAAAA/BQt0ZW1wZXJhdHVyZc3MjD8ACg9zYXZhbm5hX3BsYXRlYXUFCGRvd25mYWxsAAAAAAULdGVtcGVyYXR1cmUAAIA/AAoXc2F2YW5uYV9wbGF0ZWF1X211dGF0ZWQFCGRvd25mYWxsAAAAPwULdGVtcGVyYXR1cmUAAIA/AAoLc3RvbmVfYmVhY2gFCGRvd25mYWxsmpmZPgULdGVtcGVyYXR1cmXNzEw+AAoQc3VuZmxvd2VyX3BsYWlucwUIZG93bmZhbGzNzMw+BQt0ZW1wZXJhdHVyZc3MTD8ACglzd2FtcGxhbmQFCGRvd25mYWxsAAAAPwULdGVtcGVyYXR1cmXNzEw/AAoRc3dhbXBsYW5kX211dGF0ZWQFCGRvd25mYWxsAAAAPwULdGVtcGVyYXR1cmXNzEw/AAoFdGFpZ2EFCGRvd25mYWxszcxMPwULdGVtcGVyYXR1cmUAAIA+AAoLdGFpZ2FfaGlsbHMFCGRvd25mYWxszcxMPwULdGVtcGVyYXR1cmUAAIA+AAoNdGFpZ2FfbXV0YXRlZAUIZG93bmZhbGzNzEw/BQt0ZW1wZXJhdHVyZQAAgD4ACgd0aGVfZW5kBQhkb3duZmFsbAAAAD8FC3RlbXBlcmF0dXJlAAAAPwAKCndhcm1fb2NlYW4FCGRvd25mYWxsAAAAPwULdGVtcGVyYXR1cmUAAAA/AAA=";
+			var bytes = base64.DecodeBase64();
+
+			Assert.AreEqual(0x0a, bytes[0]);
+			Assert.AreEqual(0x3f, bytes[^3]);
+
+			var stream = new MemoryStream(bytes);
+			Nbt nbt = new Nbt();
+			NbtFile file = new NbtFile();
+			file.BigEndian = false;
+			file.UseVarInt = true;
+			nbt.NbtFile = file;
+			file.LoadFromStream(stream, NbtCompression.None);
+		}
+
+				[TestMethod]
+		public void NbtBlockPropertiesParseTest()
+		{
+			var bytes = new byte[] {0x0a, 0x00, 0x00};
+
+			var stream = new MemoryStream(bytes);
+			Nbt nbt = new Nbt();
+			NbtFile file = new NbtFile();
+			file.BigEndian = false;
+			file.UseVarInt = true;
+			nbt.NbtFile = file;
+			file.LoadFromStream(stream, NbtCompression.None);
+		}
+
+
 	}
 }

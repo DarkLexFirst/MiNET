@@ -51,75 +51,86 @@ namespace MiNET.Client
 			Console.WriteLine(MiNET);
 			Console.WriteLine("Starting client...");
 
-			var client = new MiNetClient(new IPEndPoint(IPAddress.Parse("192.168.0.4"), 19132), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
+			var client = new MiNetClient(new IPEndPoint(IPAddress.Parse("192.168.10.178"), 19132), "TheGrey");
+			//var client = new MiNetClient(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 19132), "TheGrey");
+			//var client = new MiNetClient(new IPEndPoint(Dns.GetHostEntry("test.pmmp.io").AddressList[0], 19132), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
 			//var client = new MiNetClient(new IPEndPoint(IPAddress.Parse("192.168.0.4"), 19162), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
 			//var client = new MiNetClient(new IPEndPoint(IPAddress.Parse("213.89.103.206"), 19132), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
-			//var client = new MiNetClient(new IPEndPoint(Dns.GetHostEntry("yodamine.com").AddressList[0], 19132), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
+			//var client = new MiNetClient(new IPEndPoint(Dns.GetHostEntry("yodamine.com").AddressList[0], 19132), "TheGrey");
 			//var client = new MiNetClient(new IPEndPoint(IPAddress.Loopback, 19132), "TheGrey", new DedicatedThreadPool(new DedicatedThreadPoolSettings(Environment.ProcessorCount)));
+
+			client.MessageHandler = new BedrockTraceHandler(client);
 
 			client.StartClient();
 			Log.Warn("Client listening for connecting on: " + client.ClientEndpoint);
-			Console.WriteLine("Started!");
-
-			//client.SendOpenConnectionRequest1();
 
 			Console.WriteLine("Looking for server...");
-			if (client.ServerEndpoint != null)
+
+			if(!client.Connection.TryLocate(client.ServerEndPoint, out (IPEndPoint serverEndPoint, string serverName) info))
 			{
-				while (!client.HaveServer)
-				{
-					Console.WriteLine("... still looking ...");
-					client.SendUnconnectedPing();
-					Thread.Sleep(500);
-				}
+				Console.WriteLine($"Failed to locate server at {client.ServerEndPoint}");
+				return;
 			}
 
-			Console.WriteLine($"... YEAH! FOUND SERVER! It's at {client.ServerEndpoint?.Address}, port {client.ServerEndpoint?.Port}");
+			Console.WriteLine($"... YEAH! FOUND SERVER! It's at {info.serverEndPoint}, \"{info.serverName}\"");
+
+			if (!client.Connection.TryConnect(info.serverEndPoint))
+			{
+				Console.WriteLine($"Failed to connect to server at {info.serverEndPoint}");
+				return;
+			}
+
+			Console.WriteLine("Waiting for spawn...");
+			client.PlayerStatusChangedWaitHandle.WaitOne();
+			Console.WriteLine("... spawned");
+
+			client.HasSpawned = true;
 
 			Action<Task, PlayerLocation> doMoveTo = BotHelpers.DoMoveTo(client);
+
 			Action<Task, string> doSendCommand = BotHelpers.DoSendCommand(client);
 
-			Task.Run(BotHelpers.DoWaitForSpawn(client))
-				.ContinueWith(t => doSendCommand(t, $"/me says \"I spawned at {client.CurrentLocation}\""))
-				//.ContinueWith(task =>
-				//{
-				//	var request = new McpeCommandRequest();
-				//	request.command = "/setblock ~ ~-1 ~ log 0 replace";
-				//	request.unknownUuid = new UUID(Guid.NewGuid().ToString());
-				//	client.SendPacket(request);
+			//Task.Run(BotHelpers.DoWaitForSpawn(client))
+			//	.ContinueWith(t => doSendCommand(t, $"/me says \"I spawned at {client.CurrentLocation}\""))
+			//	//.ContinueWith(task =>
+			//	//{
+			//	//	var request = new McpeCommandRequest();
+			//	//	request.command = "/setblock ~ ~-1 ~ log 0 replace";
+			//	//	request.unknownUuid = new UUID(Guid.NewGuid().ToString());
+			//	//	client.SendPacket(request);
 
-				//	var coord =  (BlockCoordinates) client.CurrentLocation;
-				//	var pick = McpeBlockPickRequest.CreateObject();
-				//	pick.x = coord.X;
-				//	pick.y = coord.Y;
-				//	pick.z = coord.Z;
-				//	client.SendPacket(request);
-				//})
+			//	//	var coord =  (BlockCoordinates) client.CurrentLocation;
+			//	//	var pick = McpeBlockPickRequest.CreateObject();
+			//	//	pick.x = coord.X;
+			//	//	pick.y = coord.Y;
+			//	//	pick.z = coord.Z;
+			//	//	client.SendPacket(request);
+			//	//})
 
-				//.ContinueWith(t => BotHelpers.DoMobEquipment(client)(t, new ItemBlock(new Cobblestone(), 0) {Count = 64}, 0))
-				//.ContinueWith(t => BotHelpers.DoMoveTo(client)(t, new PlayerLocation(client.CurrentLocation.ToVector3() - new Vector3(0, 1, 0), 180, 180, 180)))
-				//.ContinueWith(t => doMoveTo(t, new PlayerLocation(40, 5.62f, -20, 180, 180, 180)))
-				//.ContinueWith(t => doMoveTo(t, new PlayerLocation(0, 5.62, 0, 180 + 45, 180 + 45, 180)))
-				//.ContinueWith(t => doMoveTo(t, new PlayerLocation(0, 5.62, 0, 180 + 45, 180 + 45, 180)))
-				//.ContinueWith(t => doMoveTo(t, new PlayerLocation(22, 5.62, 40, 180 + 45, 180 + 45, 180)))
-				//.ContinueWith(t => doMoveTo(t, new PlayerLocation(50, 5.62f, 17, 180, 180, 180)))
-				.ContinueWith(t => doSendCommand(t, "/me says \"Hi guys! It is I!!\""))
-				//.ContinueWith(t => Task.Delay(500).Wait())
-				//.ContinueWith(t => doSendCommand(t, "/summon sheep"))
-				//.ContinueWith(t => Task.Delay(500).Wait())
-				//.ContinueWith(t => doSendCommand(t, "/kill @e[type=sheep]"))
-				.ContinueWith(t => Task.Delay(5000).Wait())
-				//.ContinueWith(t =>
-				//{
-				//	Random rnd = new Random();
-				//	while (true)
-				//	{
-				//		doMoveTo(t, new PlayerLocation(rnd.Next(10, 40), 5.62f, rnd.Next(-50, -10), 180, 180, 180));
-				//		//doMoveTo(t, new PlayerLocation(50, 5.62f, 17, 180, 180, 180));
-				//		doMoveTo(t, new PlayerLocation(rnd.Next(40, 50), 5.62f, rnd.Next(0, 20), 180, 180, 180));
-				//	}
-				//})
-				;
+			//	//.ContinueWith(t => BotHelpers.DoMobEquipment(client)(t, new ItemBlock(new Cobblestone(), 0) {Count = 64}, 0))
+			//	//.ContinueWith(t => BotHelpers.DoMoveTo(client)(t, new PlayerLocation(client.CurrentLocation.ToVector3() - new Vector3(0, 1, 0), 180, 180, 180)))
+			//	//.ContinueWith(t => doMoveTo(t, new PlayerLocation(40, 5.62f, -20, 180, 180, 180)))
+			//	//.ContinueWith(t => doMoveTo(t, new PlayerLocation(0, 5.62, 0, 180 + 45, 180 + 45, 180)))
+			//	//.ContinueWith(t => doMoveTo(t, new PlayerLocation(0, 5.62, 0, 180 + 45, 180 + 45, 180)))
+			//	//.ContinueWith(t => doMoveTo(t, new PlayerLocation(22, 5.62, 40, 180 + 45, 180 + 45, 180)))
+			//	//.ContinueWith(t => doMoveTo(t, new PlayerLocation(50, 5.62f, 17, 180, 180, 180)))
+			//	.ContinueWith(t => doSendCommand(t, "/me says \"Hi guys! It is I!!\""))
+			//	//.ContinueWith(t => Task.Delay(500).Wait())
+			//	//.ContinueWith(t => doSendCommand(t, "/summon sheep"))
+			//	//.ContinueWith(t => Task.Delay(500).Wait())
+			//	//.ContinueWith(t => doSendCommand(t, "/kill @e[type=sheep]"))
+			//	.ContinueWith(t => Task.Delay(5000).Wait())
+			//	//.ContinueWith(t =>
+			//	//{
+			//	//	Random rnd = new Random();
+			//	//	while (true)
+			//	//	{
+			//	//		doMoveTo(t, new PlayerLocation(rnd.Next(10, 40), 5.62f, rnd.Next(-50, -10), 180, 180, 180));
+			//	//		//doMoveTo(t, new PlayerLocation(50, 5.62f, 17, 180, 180, 180));
+			//	//		doMoveTo(t, new PlayerLocation(rnd.Next(40, 50), 5.62f, rnd.Next(0, 20), 180, 180, 180));
+			//	//	}
+			//	//})
+			//	;
 
 			//string fileName = Path.GetTempPath() + "MobSpawns_" + Guid.NewGuid() + ".txt";
 			//FileStream file = File.OpenWrite(fileName);
@@ -165,8 +176,8 @@ namespace MiNET.Client
 
 			Console.WriteLine("<Enter> to exit!");
 			Console.ReadLine();
-			client.SendDisconnectionNotification();
-			Thread.Sleep(2000);
+			if (client.IsConnected) client.SendDisconnectionNotification();
+			Thread.Sleep(50);
 			client.StopClient();
 		}
 	}
