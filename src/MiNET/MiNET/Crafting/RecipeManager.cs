@@ -58,6 +58,7 @@ namespace MiNET.Crafting
 		}
 
 		// GENERATED CODE. DON'T EDIT BY HAND
+
 		static RecipeManager()
 		{
 			Recipes = new Recipes
@@ -22991,6 +22992,7 @@ namespace MiNET.Crafting
 				new SmeltingRecipe(new Item(463, -1, 1), new Item(460, 32767), "campfire"),
 			};
 		}
+
 
 		public static void Add(Recipe recipe)
 		{

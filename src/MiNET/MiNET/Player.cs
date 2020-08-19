@@ -824,7 +824,7 @@ namespace MiNET
 			SendAdventureSettings();
 		}
 
-		public bool IsAutoJump { get; set; }
+		public bool IsAutoJump { get; set; } = true;
 
 		[Wired]
 		public void SetAutoJump(bool isAutoJump)
@@ -2575,7 +2575,8 @@ namespace MiNET
 			var itemEntity = new ItemEntity(Level, item)
 			{
 				Velocity = KnownPosition.GetDirection().Normalize() * 0.3f,
-				KnownPosition = KnownPosition + new Vector3(0f, 1.62f, 0f)
+				KnownPosition = KnownPosition + new Vector3(0f, 1.62f, 0f),
+				PickupDelay = 25
 			};
 			itemEntity.SpawnEntity();
 

@@ -1437,35 +1437,32 @@ namespace MiNET.Worlds
 			{
 				foreach (Item drop in drops)
 				{
-					DropItem(block.Coordinates, drop);
+					DropItem(block.Coordinates.BlockCenter(), drop);
 				}
 			}
 		}
 
 
-		public virtual void DropItem(Vector3 coordinates, Item drop)
+		public virtual ItemEntity DropItem(Vector3 coordinates, Item drop)
 		{
-			if (GameMode == GameMode.Creative) return;
+			if (GameMode == GameMode.Creative) return null;
 
-			if (drop == null) return;
-			if (drop.Id == 0) return;
-			if (drop.Count == 0) return;
+			if (drop == null) return null;
+			if (drop.Id == 0) return null;
+			if (drop.Count == 0) return null;
 
 			if (AutoSmelt) drop = drop.GetSmelt() ?? drop;
 
 			Random random = new Random();
 			var itemEntity = new ItemEntity(this, drop)
 			{
-				KnownPosition =
-				{
-					X = (float) coordinates.X + 0.5f,
-					Y = (float) coordinates.Y + 0.5f,
-					Z = (float) coordinates.Z + 0.5f
-				},
-				Velocity = new Vector3((float) (random.NextDouble() * 0.005), (float) (random.NextDouble() * 0.20), (float) (random.NextDouble() * 0.005))
+				KnownPosition = new PlayerLocation(coordinates),
+				Velocity = new Vector3((float) ((random.NextDouble() - 0.5) * 0.2), (float) (random.NextDouble() * 0.25), (float) ((random.NextDouble() - 0.5) * 0.2))
 			};
 
 			itemEntity.SpawnEntity();
+
+			return itemEntity;
 		}
 
 		public void ApplyPhysics(int x, int y, int z)

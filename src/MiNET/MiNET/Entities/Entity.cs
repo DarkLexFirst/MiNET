@@ -46,7 +46,7 @@ namespace MiNET.Entities
 
 		public Level Level { get; set; }
 
-		public string EntityTypeId { get; protected set; }
+		public string EntityTypeId { get; set; }
 		public long EntityId { get; set; }
 		public bool IsSpawned { get; set; }
 		public bool CanDespawn { get; set; } = true;

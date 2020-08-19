@@ -20,7 +20,7 @@
 	</PropertyGroup>
 
 	<PropertyGroup>
-	  <LangVersion>latest</LangVersion>
+	  <LangVersion>8.0</LangVersion>
 	  <NoWarn>1701;1702;1701</NoWarn>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>

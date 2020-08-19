@@ -8,4 +8,8 @@
 		<ProjectReference Include="..\MiNET\MiNET.csproj" />
 	</ItemGroup>
 
+	<PropertyGroup>
+		<LangVersion>latest</LangVersion>
+	</PropertyGroup>
+
 </Project>
