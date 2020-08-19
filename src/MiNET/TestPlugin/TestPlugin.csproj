@@ -5,8 +5,12 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <LangVersion>latest</LangVersion>
+    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
+
+	<PropertyGroup>
+		<LangVersion>8.0</LangVersion>
+	</PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Stripe.net" Version="16.10.0" />

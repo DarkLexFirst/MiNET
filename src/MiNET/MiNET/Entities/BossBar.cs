@@ -86,8 +86,8 @@ namespace MiNET.Entities
 		[Wired]
 		public virtual void SetProgress(int progress = Int32.MinValue, int maxProgress = Int32.MinValue)
 		{
-			if (progress != Int32.MinValue) Progress = progress;
-			if (maxProgress != Int32.MinValue) MaxProgress = maxProgress;
+			if (progress != Int32.MinValue) Progress = Math.Max(progress, 0);
+			if (maxProgress != Int32.MinValue) MaxProgress = Math.Max(maxProgress, 1);
 
 			var bossEvent = McpeBossEvent.CreateObject();
 			bossEvent.bossEntityId = EntityId;

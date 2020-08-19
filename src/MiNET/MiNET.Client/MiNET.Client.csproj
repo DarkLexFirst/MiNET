@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -16,6 +16,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+	<PropertyGroup>
+		<LangVersion>8.0</LangVersion>
+	</PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MiNET\MiNET.csproj" />

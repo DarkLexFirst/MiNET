@@ -24,6 +24,7 @@
 #endregion
 
 using System;
+using System.Linq;
 using System.Numerics;
 using log4net;
 using MiNET.Blocks;
@@ -91,92 +92,96 @@ namespace MiNET.Entities.World
 			BroadcastSetEntityData();
 		}
 
+		private int compressionDelay = 0;
 		public override void OnTick(Entity[] entities)
 		{
-			if (Velocity == Vector3.Zero)
+			if (!NoAi)
 			{
-				// Object was resting and now someone removed the block on which it was resting
-				// or someone places a block over it.
-				if (IsMobInGround(KnownPosition))
+				if (Velocity == Vector3.Zero)
 				{
-					Velocity += new Vector3(0, (float) Gravity, 0);
-				}
-				else
-				{
-					bool onGround = IsMobOnGround(KnownPosition);
-					if (!onGround) Velocity -= new Vector3(0, (float) Gravity, 0);
-				}
-			}
-
-			if (Velocity.Length() > 0.01)
-			{
-				bool onGroundBefore = IsMobOnGround(KnownPosition);
-
-				if (IsMobInGround(KnownPosition))
-				{
-					Velocity += new Vector3(0, (float) Gravity, 0);
-					KnownPosition.X += Velocity.X;
-					KnownPosition.Y += Velocity.Y;
-					KnownPosition.Z += Velocity.Z;
-					BroadcastMove();
-					BroadcastMotion();
-					return;
-				}
-
-				Vector3 adjustedVelocity = GetAdjustedLengthFromCollision(Velocity);
-
-				KnownPosition.X += adjustedVelocity.X;
-				KnownPosition.Y += adjustedVelocity.Y;
-				KnownPosition.Z += adjustedVelocity.Z;
-
-				BroadcastMove();
-				BroadcastMotion();
-
-				bool adjustAngle = adjustedVelocity != Velocity;
-				if (adjustAngle)
-				{
-					CheckBlockAhead();
-				}
-
-				bool onGround = IsMobOnGround(KnownPosition);
-
-				if (!onGroundBefore && onGround)
-				{
-					float ff = 0.6f * 0.98f;
-					Velocity *= new Vector3(ff, 0, ff);
-				}
-				else
-				{
-					Velocity *= (float) (1.0 - Drag);
-
-					if (!onGround)
+					// Object was resting and now someone removed the block on which it was resting
+					// or someone places a block over it.
+					if (IsMobInGround(KnownPosition))
 					{
-						Velocity -= new Vector3(0, (float) Gravity, 0);
+						Velocity += new Vector3(0, (float) Gravity, 0);
 					}
 					else
+					{
+						bool onGround = IsMobOnGround(KnownPosition);
+						if (!onGround)
+							Velocity -= new Vector3(0, (float) Gravity, 0);
+					}
+				}
+
+				if (Velocity.Length() > 0.01)
+				{
+					bool onGroundBefore = IsMobOnGround(KnownPosition);
+
+					if (IsMobInGround(KnownPosition))
+					{
+						Velocity += new Vector3(0, (float) Gravity, 0);
+						KnownPosition.X += Velocity.X;
+						KnownPosition.Y += Velocity.Y;
+						KnownPosition.Z += Velocity.Z;
+						BroadcastMove();
+						BroadcastMotion();
+						return;
+					}
+
+					Vector3 adjustedVelocity = GetAdjustedLengthFromCollision(Velocity);
+
+					KnownPosition.X += adjustedVelocity.X;
+					KnownPosition.Y += adjustedVelocity.Y;
+					KnownPosition.Z += adjustedVelocity.Z;
+
+					BroadcastMove();
+					BroadcastMotion();
+
+					bool adjustAngle = adjustedVelocity != Velocity;
+					if (adjustAngle)
+					{
+						CheckBlockAhead();
+					}
+
+					bool onGround = IsMobOnGround(KnownPosition);
+
+					if (!onGroundBefore && onGround)
 					{
 						float ff = 0.6f * 0.98f;
 						Velocity *= new Vector3(ff, 0, ff);
 					}
-				}
-			}
-			else if (Velocity != Vector3.Zero)
-			{
-				KnownPosition.X += (float) Velocity.X;
-				KnownPosition.Y += (float) Velocity.Y;
-				KnownPosition.Z += (float) Velocity.Z;
+					else
+					{
+						Velocity *= (float) (1.0 - Drag);
 
-				Velocity = Vector3.Zero;
-				LastUpdatedTime = DateTime.UtcNow;
-				NoAi = true;
-				BroadcastMove(true);
-				BroadcastMotion(true);
+						if (!onGround)
+						{
+							Velocity -= new Vector3(0, (float) Gravity, 0);
+						}
+						else
+						{
+							float ff = 0.6f * 0.98f;
+							Velocity *= new Vector3(ff, 0, ff);
+						}
+					}
+				}
+				else if (Velocity != Vector3.Zero)
+				{
+					KnownPosition.X += (float) Velocity.X;
+					KnownPosition.Y += (float) Velocity.Y;
+					KnownPosition.Z += (float) Velocity.Z;
+
+					Velocity = Vector3.Zero;
+					LastUpdatedTime = DateTime.UtcNow;
+					BroadcastMove(true);
+					BroadcastMotion(true);
+				}
 			}
 
 			TimeToLive--;
-			PickupDelay--;
+			if (PickupDelay > 0) PickupDelay--;
 
-			if (TimeToLive <= 0)
+			if (TimeToLive <= 0 || KnownPosition.Y < 0)
 			{
 				DespawnEntity();
 				return;
@@ -185,17 +190,18 @@ namespace MiNET.Entities.World
 			// Motion
 
 
-			if (PickupDelay > 0) return;
+			if (PickupDelay > 0 || PickupDelay == -1) return;
 
 			var bbox = GetBoundingBox();
 
 			var players = Level.GetSpawnedPlayers();
-			foreach (var player in players)
+			foreach (var player in players.OrderBy(p => KnownPosition.DistanceTo(p.KnownPosition)))
 			{
-				if (player.GameMode != GameMode.Spectator && bbox.Intersects(player.GetBoundingBox() + 1))
+				if (player.GameMode != GameMode.Spectator && !player.HealthManager.IsDead && bbox.Intersects(player.GetBoundingBox() + 1))
 				{
 					if (player.Inventory.SetFirstEmptySlot(Item, true))
 					{
+						var count = Item.Count;
 						{
 							var takeItemEntity = McpeTakeItemEntity.CreateObject();
 							takeItemEntity.runtimeEntityId = EntityId;
@@ -209,17 +215,55 @@ namespace MiNET.Entities.World
 							player.SendPacket(takeItemEntity);
 						}
 
-						DespawnEntity();
-
-						if (Item.Count > 0)
+						if (Item.Count > 0 && Item.Count != count)
 						{
-							Level.DropItem(KnownPosition, Item);
+							SpawnToPlayers(Level.GetAllPlayers());
 						}
-
+						else
+						{
+							DespawnEntity();
+							return;
+						}
 						break;
 					}
 				}
 			}
+
+			if (++compressionDelay < 10 || Item.Count >= Item.MaxStackSize)
+				return;
+			compressionDelay = 0;
+			if (Item.Count >= Item.MaxStackSize)
+				return;
+			var rnd = new Random();
+			if (rnd.NextDouble() < 0.5)
+				foreach (ItemEntity itemEntity in Level.Entities.Values.Where(e => e is ItemEntity && e.KnownPosition.DistanceTo(KnownPosition) < 0.55f).ToArray())
+				{
+					if (itemEntity == this || itemEntity.EntityId == EntityId)
+						continue;
+					if (itemEntity.Item.Id == Item.Id && itemEntity.Item.Metadata == Item.Metadata && itemEntity.Item.ExtraData?.ToString() == Item.ExtraData?.ToString())
+					{
+						if (itemEntity.Item.Count + Item.Count > Item.MaxStackSize)
+							continue;
+
+						if (Item.Count >= itemEntity.Item.Count)
+						{
+							TimeToLive = (TimeToLive + itemEntity.TimeToLive) / 2;
+							Item.Count += itemEntity.Item.Count;
+							SpawnToPlayers(Level.GetAllPlayers());
+							itemEntity.Item = new ItemAir();
+							itemEntity.DespawnEntity();
+						}
+						else
+						{
+							itemEntity.TimeToLive = (TimeToLive + itemEntity.TimeToLive) / 2;
+							itemEntity.Item.Count += Item.Count;
+							itemEntity.SpawnToPlayers(Level.GetAllPlayers());
+							Item = new ItemAir();
+							DespawnEntity();
+						}
+						return;
+					}
+				}
 		}
 
 		private Vector3 GetAdjustedLengthFromCollision(Vector3 velocity)
@@ -240,7 +284,7 @@ namespace MiNET.Entities.World
 					if (distance.HasValue)
 					{
 						float dist = (float) ((float) distance - (Length / 4));
-						return ray.Direction * new Vector3(dist);
+						return ray.Direction * new Vector3(dist, (float) distance, dist);
 					}
 				}
 			}
