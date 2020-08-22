@@ -2212,6 +2212,11 @@ namespace MiNET
 			_openInventory = inventory;
 		}
 
+		public virtual IInventory GetOpenInventory()
+		{
+			return _openInventory;
+		}
+
 		public void OpenInventory(BlockCoordinates inventoryCoord)
 		{
 			// https://github.com/pmmp/PocketMine-MP/blob/stable/src/pocketmine/network/mcpe/protocol/types/WindowTypes.php
@@ -3299,6 +3304,7 @@ namespace MiNET
 		public override MetadataDictionary GetMetadata()
 		{
 			var metadata = base.GetMetadata();
+			if (!Effects.Values.Any(e => e.Particles)) metadata._entries.Remove((int) MetadataFlags.PotionColor);
 			metadata[(int) MetadataFlags.NameTag] = new MetadataString(NameTag ?? Username);
 			metadata[(int) MetadataFlags.ButtonText] = new MetadataString(ButtonText ?? string.Empty);
 			metadata[(int) MetadataFlags.PlayerFlags] = new MetadataByte((byte) (IsSleeping ? 0b10 : 0));

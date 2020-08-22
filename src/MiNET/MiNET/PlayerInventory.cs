@@ -365,6 +365,10 @@ namespace MiNET
 
 			if (OffHand.Id != 0) OffHand = new ItemAir();
 
+			UiInventory = new CursorInventory();
+
+			if (OffHand.Id != 0) OffHand = new ItemAir();
+
 			if (Helmet.Id != 0) Helmet = new ItemAir();
 			if (Chest.Id != 0) Chest = new ItemAir();
 			if (Leggings.Id != 0) Leggings = new ItemAir();
