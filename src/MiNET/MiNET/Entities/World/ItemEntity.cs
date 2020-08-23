@@ -128,11 +128,15 @@ namespace MiNET.Entities.World
 						return;
 					}
 
-					Vector3 adjustedVelocity = GetAdjustedLengthFromCollision(Velocity);
+				var rayTracing = new RayTracing(Level, KnownPosition, Velocity, new Vector3((float)Length / 2, 0.005f, (float)Length / 2)); //TEMP
 
-					KnownPosition.X += adjustedVelocity.X;
-					KnownPosition.Y += adjustedVelocity.Y;
-					KnownPosition.Z += adjustedVelocity.Z;
+				rayTracing.ToDestination();
+
+				Vector3 adjustedVelocity = rayTracing.Position;
+
+				KnownPosition.X += adjustedVelocity.X;
+				KnownPosition.Y += adjustedVelocity.Y;
+				KnownPosition.Z += adjustedVelocity.Z;
 
 					BroadcastMove();
 					BroadcastMotion();
@@ -264,32 +268,6 @@ namespace MiNET.Entities.World
 						return;
 					}
 				}
-		}
-
-		private Vector3 GetAdjustedLengthFromCollision(Vector3 velocity)
-		{
-			var length = Length / 2;
-			var direction = Vector3.Normalize(Velocity * 1.00000101f);
-			var position = KnownPosition.ToVector3();
-			int count = (int) (Math.Ceiling(Velocity.Length() / length) + 2);
-			for (int i = 0; i < count; i++)
-			{
-				var distVec = direction * (float) length * i;
-				BlockCoordinates blockPos = position + distVec;
-				Block block = Level.GetBlock(blockPos);
-				if (block.IsSolid)
-				{
-					Ray ray = new Ray(position, direction);
-					var distance = ray.Intersects(block.GetBoundingBox());
-					if (distance.HasValue)
-					{
-						float dist = (float) ((float) distance - (Length / 4));
-						return ray.Direction * new Vector3(dist, (float) distance - 0.005f, dist);
-					}
-				}
-			}
-
-			return velocity;
 		}
 
 		private void AdjustForCollision()
