@@ -27,6 +27,8 @@ using System;
 using System.Numerics;
 using System.Threading.Tasks;
 using log4net;
+using MiNET.Entities.Passive;
+using MiNET.Entities.Projectiles;
 using MiNET.Net;
 using MiNET.Utils;
 using MiNET.Worlds;
@@ -44,45 +46,72 @@ namespace MiNET.Items
 
 		public override void UseItem(Level world, Player player, BlockCoordinates blockCoordinates)
 		{
-			if (player.IsGliding)
-			{
-				var currentSpeed = player.CurrentSpeed / 20f;
-				if (currentSpeed > 35f / 20f)
-				{
-					//player.SendMessage($"Speed already over max {player.CurrentSpeed:F2}m/s", MessageType.Raw);
-					return;
-				}
+			//if (player.IsGliding)
+			//{
+			//	var currentSpeed = player.CurrentSpeed / 20f;
+			//	if (currentSpeed > 35f / 20f)
+			//	{
+			//		//player.SendMessage($"Speed already over max {player.CurrentSpeed:F2}m/s", MessageType.Raw);
+			//		return;
+			//	}
 
-				Vector3 velocity = Vector3.Normalize(player.KnownPosition.GetHeadDirection()) * (float) currentSpeed;
-				float factor = (float) (1 + 1 / (1 + currentSpeed * 2));
-				velocity *= factor;
+			//	Vector3 velocity = Vector3.Normalize(player.KnownPosition.GetHeadDirection()) * (float) currentSpeed;
+			//	float factor = (float) (1 + 1 / (1 + currentSpeed * 2));
+			//	velocity *= factor;
 
-				if (currentSpeed < 7f / 20f)
-				{
-					velocity = Vector3.Normalize(velocity) * 1.2f;
-				}
+			//	if (currentSpeed < 7f / 20f)
+			//	{
+			//		velocity = Vector3.Normalize(velocity) * 1.2f;
+			//	}
 
-				McpeSetEntityMotion motions = McpeSetEntityMotion.CreateObject();
-				motions.runtimeEntityId = EntityManager.EntityIdSelf;
-				motions.velocity = velocity;
+			//	McpeSetEntityMotion motions = McpeSetEntityMotion.CreateObject();
+			//	motions.runtimeEntityId = EntityManager.EntityIdSelf;
+			//	motions.velocity = velocity;
 
-				player.SendPacket(motions);
-			}
-			else if (player.Inventory.Chest is ItemElytra)
-			{
-				var motions = McpeSetEntityMotion.CreateObject();
-				motions.runtimeEntityId = EntityManager.EntityIdSelf;
-				var velocity = new Vector3(0, 2, 0);
-				motions.velocity = velocity;
-				player.SendPacket(motions);
+			//	player.SendPacket(motions);
+			//}
+			//else if (player.Inventory.Chest is ItemElytra)
+			//{
+			//	var motions = McpeSetEntityMotion.CreateObject();
+			//	motions.runtimeEntityId = EntityManager.EntityIdSelf;
+			//	var velocity = new Vector3(0, 2, 0);
+			//	motions.velocity = velocity;
+			//	player.SendPacket(motions);
 
-				SendWithDelay(200, () =>
-				{
-					player.IsGliding = true;
-					player.Height = 0.6;
-					player.BroadcastSetEntityData();
-				});
-			}
+			//	SendWithDelay(200, () =>
+			//	{
+			//		player.IsGliding = true;
+			//		player.Height = 0.6;
+			//		player.BroadcastSetEntityData();
+			//	});
+			//}
+
+			
+		}
+
+		public override void PlaceBlock(Level world, Player player, BlockCoordinates blockCoordinates, BlockFace face, Vector3 faceCoords)
+		{
+			//var rt = new RayTracing(world, player.KnownPosition + new PlayerLocation(0, 1.62f, 0), player.KnownPosition.GetHeadDirection() * 10, new Vector3(0.2f));
+			//rt.ToDestination();
+			//player.SendMessage(rt.Position + "   " + blockCoordinates);
+
+			//Arrow a = new Arrow(player, world);
+			//a.KnownPosition = new PlayerLocation(rt.Position);
+			//a.KnownPosition.Pitch = (float)rt.Offset.GetPitch();
+			//a.KnownPosition.Yaw = (float) rt.Offset.GetYaw();
+			//a.SpawnEntity();
+
+			//try
+			//{
+			//	var rt = new BoundingBoxTracing(world, player.GetBoundingBox(), player.KnownPosition, player.KnownPosition.GetHeadDirection() * 10);
+			//	rt.ToDestination(out BlockFace f);
+			//	new Villager(world) { KnownPosition = new PlayerLocation(rt.Position), Gravity = 0 }.SpawnEntity();
+			//	player.SendMessage(player.KnownPosition.ToVector3() + "   " + rt.Position);
+			//}
+			//catch (Exception e)
+			//{
+			//	Console.WriteLine(e);
+			//}
 		}
 
 		private async Task SendWithDelay(int delay, Action action)
