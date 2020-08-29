@@ -29,6 +29,7 @@ using System.Linq;
 using log4net;
 using MiNET.Blocks;
 using MiNET.Entities;
+using MiNET.Entities.Passive;
 using MiNET.Items;
 using MiNET.Net;
 using MiNET.Utils;
@@ -352,6 +353,50 @@ namespace MiNET
 			sendSlot.uniqueid = Slots[slot].UniqueId;
 			sendSlot.item = Slots[slot];
 			Player.SendPacket(sendSlot);
+		}
+
+		public Item GetSlot(int slot, int inventoryId)
+		{
+			switch (inventoryId)
+			{
+				case 0:
+					return Slots[slot];
+				case 119:
+					return OffHand;
+				case 120:
+					switch (slot)
+					{
+						case 0:
+							return Helmet;
+						case 1:
+							return Chest;
+						case 2:
+							return Leggings;
+						case 3:
+							return Boots;
+						default:
+							return new ItemAir();
+					}
+				case 121:
+					return new ItemAir();
+				case 124:
+					return UiInventory.Slots[slot];
+				default:
+					var openInventory = Player.GetOpenInventory();
+					if (openInventory != null)
+					{
+						if (openInventory is Inventory inventory && inventory.WindowsId == inventoryId)
+						{
+							return inventory.GetSlot((byte) slot);
+						}
+						else if (openInventory is HorseInventory horseInventory)
+						{
+							return horseInventory.GetSlot((byte) slot);
+						}
+					}
+					break;
+			}
+			return new ItemAir();
 		}
 
 		public void Clear()

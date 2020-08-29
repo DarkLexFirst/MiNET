@@ -196,7 +196,7 @@ namespace MiNET
 
 		protected Form CurrentForm { get; set; } = null;
 
-		public void HandleMcpeModalFormResponse(McpeModalFormResponse message)
+		public virtual void HandleMcpeModalFormResponse(McpeModalFormResponse message)
 		{
 			if (CurrentForm == null) Log.Warn("No current form set for player when processing response");
 

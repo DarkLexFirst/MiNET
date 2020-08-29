@@ -151,28 +151,12 @@ namespace MiNET.Entities.Projectiles
 			}
 			else
 			{
-				var velocity2 = Velocity;
-				velocity2 *= (float) (1.0d - Drag);
-				velocity2 -= new Vector3(0, (float) Gravity, 0);
-				double distance = velocity2.Length();
-				velocity2 = Vector3.Normalize(velocity2) / 2;
+				var rayTracing = new RayTracing(Level, KnownPosition, Velocity);
+				collided = rayTracing.ToDestination(out collidedWithBlock);
 
-				for (int i = 0; i < Math.Ceiling(distance) * 2; i++)
-				{
-					Vector3 nextPos = KnownPosition.ToVector3();
-					nextPos.X += (float) velocity2.X * i;
-					nextPos.Y += (float) velocity2.Y * i;
-					nextPos.Z += (float) velocity2.Z * i;
-
-					Block block = Level.GetBlock(nextPos);
-					collided = block.IsSolid && block.GetBoundingBox().Contains(nextPos);
-					if (collided)
-					{
-						SetIntersectLocation(block.GetBoundingBox(), KnownPosition.ToVector3());
-						collidedWithBlock = block;
-						break;
-					}
-				}
+				KnownPosition.X = rayTracing.Position.X;
+				KnownPosition.Y = rayTracing.Position.Y;
+				KnownPosition.Z = rayTracing.Position.Z;
 			}
 
 			bool sendPosition = Velocity != Vector3.Zero;
@@ -183,10 +167,6 @@ namespace MiNET.Entities.Projectiles
 			}
 			else
 			{
-				KnownPosition.X += (float) Velocity.X;
-				KnownPosition.Y += (float) Velocity.Y;
-				KnownPosition.Z += (float) Velocity.Z;
-
 				Velocity *= (float) (1.0 - Drag);
 				Velocity -= new Vector3(0, (float) Gravity, 0);
 				Velocity += Force;

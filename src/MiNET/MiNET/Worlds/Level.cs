@@ -877,7 +877,7 @@ namespace MiNET.Worlds
 			RelayBroadcast(null, sendList ?? GetAllPlayers(), message);
 		}
 
-		public void RelayBroadcast<T>(Player source, Player[] sendList, T message) where T : Packet<T>, new()
+		public virtual void RelayBroadcast<T>(Player source, Player[] sendList, T message) where T : Packet<T>, new()
 		{
 			if (message == null) return;
 
@@ -1443,7 +1443,7 @@ namespace MiNET.Worlds
 		}
 
 
-		public virtual ItemEntity DropItem(Vector3 coordinates, Item drop)
+		public virtual ItemEntity DropItem(Vector3 coordinates, Item drop, bool random = true)
 		{
 			if (GameMode == GameMode.Creative) return null;
 
@@ -1453,12 +1453,16 @@ namespace MiNET.Worlds
 
 			if (AutoSmelt) drop = drop.GetSmelt() ?? drop;
 
-			Random random = new Random();
 			var itemEntity = new ItemEntity(this, drop)
 			{
-				KnownPosition = new PlayerLocation(coordinates),
-				Velocity = new Vector3((float) ((random.NextDouble() - 0.5) * 0.2), (float) (random.NextDouble() * 0.25), (float) ((random.NextDouble() - 0.5) * 0.2))
+				KnownPosition = new PlayerLocation(coordinates)
 			};
+
+			if (random)
+			{
+				Random rnd = new Random();
+				itemEntity.Velocity = new Vector3((float) ((rnd.NextDouble() - 0.5) * 0.2), (float) (rnd.NextDouble() * 0.25), (float) ((rnd.NextDouble() - 0.5) * 0.2));
+			}
 
 			itemEntity.SpawnEntity();
 

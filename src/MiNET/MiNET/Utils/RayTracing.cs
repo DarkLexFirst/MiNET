@@ -29,17 +29,17 @@ namespace MiNET.Utils
 		}
 
 		private int _stepsCount = 5;
-		public bool Next()
+		public bool Next(out Block collidedBlock)
 		{
 			var absOffset = Vector3.Abs(Offset);
 			var maxDir = Math.Max(Math.Max(absOffset.X, absOffset.Y), absOffset.Z);
 			var step = Offset / maxDir;
 
-			Position += Next(step, _stepsCount, false, out bool collided);
+			Position += Next(step, _stepsCount, false, out bool collided, out collidedBlock);
 			return collided;
 		}
 
-		public bool ToDestination()
+		public bool ToDestination(out Block collidedBlock)
 		{
 			var step = Offset;
 
@@ -52,14 +52,14 @@ namespace MiNET.Utils
 
 			int stepsCount = (int)(Offset.Length() / step.Length());
 
-			Position += Next(step, stepsCount, true, out bool collided);
+			Position += Next(step, stepsCount, true, out bool collided, out collidedBlock);
 
 			return collided;
 		}
 
-		private Vector3 Next(Vector3 step, int stepsCount, bool limited, out bool collided)
+		private Vector3 Next(Vector3 step, int stepsCount, bool limited, out bool collided, out Block collidedBlock)
 		{
-			var offset = GetAdjustedLengthFromCollision(step, stepsCount);
+			var offset = GetAdjustedLengthFromCollision(step, stepsCount, out collidedBlock);
 
 			collided = offset != Vector3.Zero;
 
@@ -68,13 +68,18 @@ namespace MiNET.Utils
 				offset = step * stepsCount;
 			}
 
-			if (limited && Offset.Length() < offset.Length()) return Offset;
+			if (limited && Offset.Length() < offset.Length())
+			{
+				collided = false;
+				return Offset;
+			}
 
 			return offset;
 		}
 
-		private Vector3 GetAdjustedLengthFromCollision(Vector3 step, int stepsCount)
+		private Vector3 GetAdjustedLengthFromCollision(Vector3 step, int stepsCount, out Block collidedBlock)
 		{
+			collidedBlock = null;
 			for (int i = 0; i <= stepsCount; i++)
 			{
 				var distVec = step * i;
@@ -86,6 +91,7 @@ namespace MiNET.Utils
 				Block xBlock = Level.GetBlock(xBlockPos);
 				var xCollision = GetAdjustedLengthFromBBCollision(xBlock);
 				var	minCollision = xCollision;
+				if (xCollision != Vector3.Zero) collidedBlock = xBlock;
 
 				BlockCoordinates yBlockPos = Position + distVec + new Vector3(0, step.Y, 0);
 				if (!coordinates.Contains(yBlockPos))
@@ -94,7 +100,10 @@ namespace MiNET.Utils
 					Block yBlock = Level.GetBlock(yBlockPos);
 					var yCollision = GetAdjustedLengthFromBBCollision(yBlock);
 					if (minCollision == Vector3.Zero || (yCollision != Vector3.Zero && minCollision.Length() > yCollision.Length()))
+					{
 						minCollision = yCollision;
+						collidedBlock = yBlock;
+					}
 				}
 
 				BlockCoordinates zBlockPos = Position + distVec + new Vector3(0, 0, step.Z);
@@ -104,7 +113,10 @@ namespace MiNET.Utils
 					Block zBlock = Level.GetBlock(zBlockPos);
 					var zCollision = GetAdjustedLengthFromBBCollision(zBlock);
 					if (minCollision == Vector3.Zero || (zCollision != Vector3.Zero && minCollision.Length() > zCollision.Length()))
+					{
 						minCollision = zCollision;
+						collidedBlock = zBlock;
+					}
 				}
 
 				if (minCollision != Vector3.Zero)
@@ -119,7 +131,10 @@ namespace MiNET.Utils
 					Block xyBlock = Level.GetBlock(xyBlockPos);
 					var xyCollision = GetAdjustedLengthFromBBCollision(xyBlock);
 					if (minCollision == Vector3.Zero || (xyCollision != Vector3.Zero && minCollision.Length() > xyCollision.Length()))
+					{
 						minCollision = xyCollision;
+						collidedBlock = xyBlock;
+					}
 				}
 
 				BlockCoordinates xzBlockPos = Position + distVec + new Vector3(step.X, 0, step.Z);
@@ -129,7 +144,10 @@ namespace MiNET.Utils
 					Block xzBlock = Level.GetBlock(xzBlockPos);
 					var xzCollision = GetAdjustedLengthFromBBCollision(xzBlock);
 					if (minCollision == Vector3.Zero || (xzCollision != Vector3.Zero && minCollision.Length() > xzCollision.Length()))
+					{
 						minCollision = xzCollision;
+						collidedBlock = xzBlock;
+					}
 				}
 
 				BlockCoordinates yzBlockPos = Position + distVec + new Vector3(0, step.Y, step.Z);
@@ -139,7 +157,10 @@ namespace MiNET.Utils
 					Block yzBlock = Level.GetBlock(yzBlockPos);
 					var yzCollision = GetAdjustedLengthFromBBCollision(yzBlock);
 					if (minCollision == Vector3.Zero || (yzCollision != Vector3.Zero && minCollision.Length() > yzCollision.Length()))
+					{
 						minCollision = yzCollision;
+						collidedBlock = yzBlock;
+					}
 				}
 
 				if (minCollision != Vector3.Zero)
@@ -154,7 +175,10 @@ namespace MiNET.Utils
 					Block xyzBlock = Level.GetBlock(xyzBlockPos);
 					var xyzCollision = GetAdjustedLengthFromBBCollision(xyzBlock);
 					if (minCollision == Vector3.Zero || (xyzCollision != Vector3.Zero && minCollision.Length() > xyzCollision.Length()))
+					{
 						minCollision = xyzCollision;
+						collidedBlock = xyzBlock;
+					}
 				}
 
 				if (minCollision != Vector3.Zero)

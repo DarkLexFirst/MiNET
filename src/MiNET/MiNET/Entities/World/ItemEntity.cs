@@ -130,7 +130,7 @@ namespace MiNET.Entities.World
 
 				var rayTracing = new RayTracing(Level, KnownPosition, Velocity, new Vector3((float)Length / 2, 0.005f, (float)Length / 2)); //TEMP
 
-				rayTracing.ToDestination();
+				rayTracing.ToDestination(out _);
 
 				Vector3 adjustedVelocity = rayTracing.Position;
 
